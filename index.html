@@ -134,6 +134,7 @@
     .layer-card * { max-width: 100%; }
     .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
     .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
     .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
@@ -143,7 +144,7 @@
     .pickr { flex: 0 0 auto; }
     .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Legend: transparent, no border/shadow */
+    /* Legend */
     .map-legend {
       position: absolute;
       left: 50%;
@@ -216,23 +217,18 @@
     <div class="panel-section" id="layersSection">
       <div class="section-title">Layers</div>
 
-      <!-- Offices legend -->
+      <!-- Offices layer with eye toggle in header -->
       <div class="layer-card" aria-label="Offices layer">
         <div class="layer-header">
           <div class="layer-meta">
             <strong>Salas O'Brien Offices</strong>
+            <span class="badge">Built-in</span>
           </div>
-          <div class="muted">Built-in</div>
+          <div class="layer-actions">
+            <button class="icon-btn" id="toggle-offices" title="Hide markers" aria-pressed="true">👁</button>
+          </div>
         </div>
         <div class="muted">This layer is always present and filterable.</div>
-
-        <!-- Visibility toggle -->
-        <div class="layer-row">
-          <label style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="officesVisible" checked>
-            Show markers
-          </label>
-        </div>
       </div>
 
       <!-- Dynamic upload layers container -->
@@ -386,7 +382,16 @@
     function escapeHTML(s='') {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
-    function nl2br(s='') { return escapeHTML(s).replace(/\n|\r\n|\r/g, '<br>'); }
+    function nl2br(s='') { return String(s).replace(/\n|\r\n|\r/g, '<br>'); }
+
+    // Offices eye icon updater
+    function updateOfficesToggleIcon(show) {
+      const btn = document.getElementById('toggle-offices');
+      if (!btn) return;
+      btn.textContent = show ? '👁' : '🙈';
+      btn.setAttribute('aria-pressed', String(show));
+      btn.title = show ? 'Hide markers' : 'Show markers';
+    }
 
     // Offices visibility helpers
     function isOfficesVisible() {
@@ -398,12 +403,13 @@
       if (map.getLayer(OFFICE_LAYER)) {
         map.setLayoutProperty(OFFICE_LAYER, 'visibility', show ? 'visible' : 'none');
       }
-      // Also hide halos when markers are hidden, rebuild when shown
+      // Hide halos when markers are hidden, rebuild when shown (if reach is enabled)
       if (!show) {
         setHaloData(HALO_OFFICES_SOURCE, emptyFC());
       } else if (reachEnabled) {
         rebuildOfficeHalos();
       }
+      updateOfficesToggleIcon(show);
       updateLegend();
     }
 
@@ -419,12 +425,15 @@
 
         ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
 
-        // Wire Offices visibility checkbox
-        const officesChk = document.getElementById('officesVisible');
-        if (officesChk) {
-          officesChk.checked = true;
-          setOfficesVisibility(officesChk.checked);
-          officesChk.addEventListener('change', (e) => setOfficesVisibility(e.target.checked));
+        // Offices eye toggle hookup
+        const officesBtn = document.getElementById('toggle-offices');
+        let officesVisible = true;
+        setOfficesVisibility(officesVisible); // initialize and sync icon
+        if (officesBtn) {
+          officesBtn.addEventListener('click', () => {
+            officesVisible = !isOfficesVisible(); // compute from layer to stay in sync
+            setOfficesVisibility(officesVisible);
+          });
         }
 
         buildFilters(originalGeojson);
@@ -463,10 +472,9 @@
 
       async function applyFilters() {
         const regionsRaw = getSelected(regionSelect);
-        const regions = regionsRaw.map(v => v.split('|')[1]); // just the state/province text
+        const regions = regionsRaw.map(v => v.split('|')[1]);
         const busSel = getSelected(buSelect);
 
-        // Offices
         const filtered = {
           type: 'FeatureCollection',
           features: originalGeojson.features.filter(f => {
@@ -483,7 +491,6 @@
         map.getSource(OFFICE_SOURCE).setData(filtered);
         if (reachEnabled && isOfficesVisible()) await rebuildOfficeHalos(filtered);
 
-        // Apply to any upload layers that opted in
         for (const layer of uploadLayers) {
           if (layer.filterActive) applyFiltersToUploadLayer(layer);
         }
@@ -495,7 +502,6 @@
         regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
         map.getSource(OFFICE_SOURCE).setData(originalGeojson);
         if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
-        // Reset uploaded layers that are linked
         for (const layer of uploadLayers) {
           if (layer.filterActive && layer.originalFC) {
             const src = map.getSource(layer.id);
@@ -507,7 +513,6 @@
       regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
 
-      // helper visible to upload-layers filtering
       window.__getActiveFilters = () => ({
         regions: getSelected(regionSelect).map(v => v.split('|')[1]),
         bus: getSelected(buSelect)
@@ -588,7 +593,6 @@
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
 
-      // Only add Offices if visible
       if (isOfficesVisible()) {
         addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
       }
@@ -625,7 +629,7 @@
     }
     function normalizeHex(hex) { if (!hex) return '#000000'; return hex.length === 9 ? hex.slice(0, 7) : hex; }
 
-    // --- Interaction shield for color picker (prevents map stealing drags) ---
+    // Interaction shield for color picker
     let __shield = null;
     function showInteractionShield() {
       if (__shield) return;
@@ -666,7 +670,7 @@
             </label>
           </div>
           <div class="layer-row">
-            <input type="file" id="file-${layerId}" accept=".csv">
+            <input type="file" id="file-${layerId}`" accept=".csv">
           </div>
           <div id="${statusId}" class="muted"></div>
         </div>
@@ -676,7 +680,6 @@
       map.addSource(layerId, { type:'geojson', data: emptyFC() });
       map.addLayer({ id: circleLayerId, type: 'circle', source: layerId, paint: { 'circle-radius': 6, 'circle-color': defaultColor } });
 
-      // Create Pickr
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
@@ -685,7 +688,6 @@
         components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
       });
 
-      // Upload layer record
       let visible = true;
       const layerRecord = {
         id: layerId,
@@ -700,40 +702,25 @@
       };
       uploadLayers.push(layerRecord);
 
-      // --- Color apply utility (instant chip + map + data) ---
       function applyColorToLayer(hex) {
         const normalized = normalizeHex(hex);
-
-        // Update the small preview chip in the layer card
         const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
         if (chip) chip.style.background = normalized;
-
-        // Also update Pickr's internal button
         const root = pickr.getRoot && pickr.getRoot();
         if (root && root.button) root.button.style.background = normalized;
-
-        // Update map layer
-        if (map.getLayer(circleLayerId)) {
-          map.setPaintProperty(circleLayerId, 'circle-color', normalized);
-        }
-
-        // Update current data colors (if any loaded)
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
         const src = map.getSource(layerId);
         if (src && layerRecord.currentFC && layerRecord.currentFC.features) {
           layerRecord.currentFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
           src.setData(layerRecord.currentFC);
         }
-
-        // Keep originalFC colors in sync (so filtering preserves color)
         if (layerRecord.originalFC && layerRecord.originalFC.features) {
           layerRecord.originalFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
           if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
         }
-
         updateLegend();
       }
 
-      // Pickr events: live updates (no need to press Save)
       pickr.on('init', () => {
         const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
         applyColorToLayer(hex);
@@ -742,7 +729,6 @@
       pickr.on('swatchselect', (c) => { applyColorToLayer(c.toHEXA().toString()); });
       pickr.on('save', () => { pickr.hide(); });
 
-      // Interaction shield while picker is open
       const mapCanvas = map.getCanvas();
       function restoreAfterPickr() {
         hideInteractionShield();
@@ -759,14 +745,12 @@
       pickr.on('cancel', restoreAfterPickr);
       pickr.on('hide',   restoreAfterPickr);
 
-      // Visibility toggle
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
         map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
         updateLegend();
       });
 
-      // Remove layer
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
         if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
@@ -776,10 +760,8 @@
         layerCount--; addLayerBtn.disabled = false; updateLegend();
       });
 
-      // Legend name live update
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      // Filter link toggle
       const linkChk = document.getElementById(`link-${layerId}`);
       linkChk.addEventListener('change', () => {
         layerRecord.filterActive = linkChk.checked;
@@ -793,7 +775,6 @@
         }
       });
 
-      // File input wiring
       const fileInput = document.getElementById(`file-${layerId}`);
       const perLayerStatus = document.getElementById(statusId);
       fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerRecord, perLayerStatus));
