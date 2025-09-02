@@ -745,11 +745,16 @@
       pickr.on('cancel', restoreAfterPickr);
       pickr.on('hide',   restoreAfterPickr);
 
-      document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
-        visible = !visible;
-        map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        updateLegend();
-      });
+const toggleBtn = document.getElementById(`toggle-${layerId}`);
+toggleBtn.textContent = '👁'; // initial state
+toggleBtn.addEventListener('click', () => {
+  visible = !visible;
+  map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
+  toggleBtn.textContent = visible ? '👁' : '👁̶';
+  toggleBtn.title = visible ? 'Hide markers' : 'Show markers';
+  updateLegend();
+});
+
 
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
