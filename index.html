@@ -139,8 +139,29 @@
     .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
     .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
-    .icon-btn { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; cursor: pointer; }
-    .icon-btn:hover { background: #f3f4f6; }
+   /* Replace your current .icon-btn block with this */
+.icon-btn{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:8px;
+  width:32px;              /* consistent square */
+  height:32px;             /* consistent square */
+  padding:0;               /* no extra vertical padding */
+  display:inline-flex;     /* center the SVG exactly */
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  line-height:0;           /* kill baseline extra height */
+}
+.icon-btn:hover{ background:#f3f4f6; }
+
+/* Add this so the SVG doesn’t introduce baseline space */
+.icon-btn svg{
+  width:18px;
+  height:18px;
+  display:block;           /* avoid inline baseline gap */
+}
+
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .pickr { flex: 0 0 auto; }
@@ -238,8 +259,9 @@
 
       <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
       <div style="height:8px;"></div>
-      <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name and CSV upload.</div>
+ <a href="#" id="downloadTemplate" class="muted" style="color:#E35920;">Download CSV template</a>
+<div class="muted" style="margin-top:6px; color:#E35920">Add up to 3 additional layers. You must use the template for uploads to work.</div>
+
     </div>
 
     <!-- Tools -->
