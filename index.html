@@ -157,7 +157,6 @@
       z-index: 4;
       max-width: min(90%, 900px);
     }
-    /* removed header styling since header removed */
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
@@ -226,6 +225,14 @@
           <div class="muted">Built-in</div>
         </div>
         <div class="muted">This layer is always present and filterable.</div>
+
+        <!-- Visibility toggle -->
+        <div class="layer-row">
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="officesVisible" checked>
+            Show markers
+          </label>
+        </div>
       </div>
 
       <!-- Dynamic upload layers container -->
@@ -234,7 +241,7 @@
       <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
       <div style="height:8px;"></div>
       <a href="#" id="downloadTemplate" class="muted">Download CSV template</a>
-      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name & CSV upload.</div>
+      <div class="muted" style="margin-top:6px;">Up to 3 additional layers. Each has its own color, name and CSV upload.</div>
     </div>
 
     <!-- Tools -->
@@ -381,6 +388,25 @@
     }
     function nl2br(s='') { return escapeHTML(s).replace(/\n|\r\n|\r/g, '<br>'); }
 
+    // Offices visibility helpers
+    function isOfficesVisible() {
+      return map.getLayer(OFFICE_LAYER)
+        ? map.getLayoutProperty(OFFICE_LAYER, 'visibility') !== 'none'
+        : false;
+    }
+    function setOfficesVisibility(show) {
+      if (map.getLayer(OFFICE_LAYER)) {
+        map.setLayoutProperty(OFFICE_LAYER, 'visibility', show ? 'visible' : 'none');
+      }
+      // Also hide halos when markers are hidden, rebuild when shown
+      if (!show) {
+        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+      } else if (reachEnabled) {
+        rebuildOfficeHalos();
+      }
+      updateLegend();
+    }
+
     // Map load
     map.on('load', async () => {
       try {
@@ -392,6 +418,14 @@
         map.addLayer({ id: OFFICE_LAYER, type: 'circle', source: OFFICE_SOURCE, paint: { 'circle-radius': 6, 'circle-color': '#009de0' } });
 
         ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
+
+        // Wire Offices visibility checkbox
+        const officesChk = document.getElementById('officesVisible');
+        if (officesChk) {
+          officesChk.checked = true;
+          setOfficesVisibility(officesChk.checked);
+          officesChk.addEventListener('change', (e) => setOfficesVisibility(e.target.checked));
+        }
 
         buildFilters(originalGeojson);
         wireOfficePopups();
@@ -447,7 +481,7 @@
           })
         };
         map.getSource(OFFICE_SOURCE).setData(filtered);
-        if (reachEnabled) await rebuildOfficeHalos(filtered);
+        if (reachEnabled && isOfficesVisible()) await rebuildOfficeHalos(filtered);
 
         // Apply to any upload layers that opted in
         for (const layer of uploadLayers) {
@@ -460,7 +494,7 @@
       document.getElementById('clearFilters').addEventListener('click', () => {
         regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
         map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-        if (reachEnabled) rebuildOfficeHalos(originalGeojson);
+        if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
         // Reset uploaded layers that are linked
         for (const layer of uploadLayers) {
           if (layer.filterActive && layer.originalFC) {
@@ -491,13 +525,11 @@
           if (regions.length && p.state) {
             ok = regions.includes(p.state);
           } else if (regions.length) {
-            ok = false; // if regions selected but item has no state, hide it
+            ok = false;
           }
           if (ok && bus.length && p.bu) {
             ok = bus.includes(p.bu);
           } else if (ok && bus.length && !p.bu) {
-            // if BU filter is selected but upload has no BU, you may decide to hide or show.
-            // Here we keep showing unless you want to hide: change to ok=false to hide.
             ok = true;
           }
           return ok;
@@ -532,7 +564,7 @@
 
     // Rebuild office halos (filtered or full)
     async function rebuildOfficeHalos(sourceData) {
-      if (!reachEnabled) return;
+      if (!reachEnabled || !isOfficesVisible()) return;
       const data = sourceData || map.getSource(OFFICE_SOURCE)._data;
       const pts = data.features.filter(f => f.geometry?.type === 'Point');
       const fc = await buildIsochronesForPoints(pts);
@@ -540,20 +572,27 @@
       setHaloData(HALO_OFFICES_SOURCE, dissolved);
     }
 
-    // Legend (hidden until a user layer exists & is visible)
+    // Legend (hidden until a user layer exists and is visible)
     function updateLegend() {
       const legendEl = document.getElementById('legend');
       const itemsEl  = document.getElementById('legendItems');
 
       const anyUserLayers = uploadLayers.length > 0 && uploadLayers.some(l => l.visible);
+
       if (!anyUserLayers) {
         legendEl.style.display = 'none';
         itemsEl.innerHTML = '';
         return;
       }
+
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
-      addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+
+      // Only add Offices if visible
+      if (isOfficesVisible()) {
+        addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+      }
+
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -647,6 +686,7 @@
       });
 
       // Upload layer record
+      let visible = true;
       const layerRecord = {
         id: layerId,
         sourceId: layerId,
@@ -720,7 +760,6 @@
       pickr.on('hide',   restoreAfterPickr);
 
       // Visibility toggle
-      let visible = true;
       document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
         map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
@@ -827,7 +866,6 @@
             }
 
             wireUploadLayerPopups(layerRecord.id);
-            // if linked to filters, apply them now
             if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
 
             updateLegend();
@@ -835,7 +873,6 @@
             console.error(err);
             statusEl.textContent = "❌ Upload failed.";
           } finally {
-            // allow re-uploading the same file
             input.value = "";
           }
         },
@@ -861,21 +898,18 @@
       map.on('mouseleave', circleId, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
     }
 
-    // ===== Export (fixed viewfinder; pan/zoom map underneath; exact 21.278:12.889) =====
+    // ===== Export (crop frame and legend capture) =====
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
       const controls = document.querySelectorAll('.mapboxgl-ctrl');
 
-      // Hide visually but keep layout (prevents any map reflow/zoom change)
       const prevPanelVis = panel.style.visibility;
       panel.style.visibility = 'hidden';
       const prevCtrlVis = [];
       controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
 
-      // DO NOT call map.resize()
+      const TARGET_AR = 21.278 / 12.889;
 
-      // Fixed crop frame; overlay is click-through so map can pan/zoom
-      const TARGET_AR = 21.278 / 12.889; // ≈ 1.650865
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
 
@@ -883,18 +917,18 @@
       Object.assign(frame.style, {
         position: 'absolute',
         top: '50%', left: '50%',
-        width: '80%',                 // initial width
+        width: '80%',
         aspectRatio: String(TARGET_AR),
         transform: 'translate(-50%, -50%)',
         outline: '2px dashed #666',
         outlineOffset: '0',
-        pointerEvents: 'none',         // clicks go to the map
+        pointerEvents: 'none',
         boxSizing: 'border-box'
       });
       overlay.appendChild(frame);
 
       const hint = document.createElement('div');
-      hint.textContent = 'Pan/zoom the map to compose. Resize frame with the slider.';
+      hint.textContent = 'Pan and zoom the map, then confirm.';
       Object.assign(hint.style, {
         position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
         fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
@@ -902,7 +936,6 @@
       });
       overlay.appendChild(hint);
 
-      // Controls (pointer-enabled)
       const controlsWrap = document.createElement('div');
       Object.assign(controlsWrap.style, {
         position: 'absolute', bottom: '20px', right: '20px',
@@ -964,7 +997,6 @@
           const mapRect   = mapCanvas.getBoundingClientRect();
           const boxRect   = frame.getBoundingClientRect();
 
-          // Convert frame rect (CSS px) -> map canvas px
           const cx = mapCanvas.width  / mapRect.width;
           const cy = mapCanvas.height / mapRect.height;
 
@@ -973,7 +1005,6 @@
           let sw = boxRect.width  * cx;
           let sh = boxRect.height * cy;
 
-          // Snap & clamp
           sx = Math.max(0, Math.floor(sx));
           sy = Math.max(0, Math.floor(sy));
           const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
@@ -981,20 +1012,18 @@
           sw = Math.max(1, ex - sx);
           sh = Math.max(1, ey - sy);
 
-          // Export canvas exactly at crop size
           const exportCanvas = document.createElement('canvas');
           exportCanvas.width = sw;
           exportCanvas.height = sh;
           const ctx = exportCanvas.getContext('2d', { alpha: false });
           ctx.imageSmoothingEnabled = false;
 
-          // Draw map crop
           ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
-          // === Legend capture (transparent; EXACT 30px bottom margin; centered horizontally) ===
+          // Legend capture
           const legendEl = document.getElementById('legend');
           if (legendEl && legendEl.style.display !== 'none') {
-            const scaleLegend = mapCanvas.width / mapRect.width; // CSS→canvas scale
+            const scaleLegend = mapCanvas.width / mapRect.width;
             const lr = legendEl.getBoundingClientRect();
 
             const legendCanvas = await html2canvas(legendEl, {
@@ -1008,13 +1037,10 @@
             const legendW = Math.round(lr.width * scaleLegend);
             const legendH = Math.round(lr.height * scaleLegend);
 
-            // horizontally center inside the crop
             let lmx = Math.round((sw - legendW) / 2);
-            // 30px bottom margin inside the crop
             const desiredBottom = Math.round(30 * scaleLegend);
             let lmy = Math.max(0, sh - desiredBottom - legendH);
 
-            // Clamp just in case
             lmx = Math.max(0, Math.min(lmx, sw - legendW));
             lmy = Math.max(0, Math.min(lmy, sh - legendH));
 
@@ -1024,7 +1050,6 @@
             ctx.imageSmoothingEnabled = prevSmooth;
           }
 
-          // Save
           const url = exportCanvas.toDataURL('image/png');
           const a = document.createElement('a');
           a.href = url;
@@ -1066,7 +1091,7 @@
 
       if (originalGeojson) map.getSource(OFFICE_SOURCE).setData(originalGeojson);
 
-      if (reachEnabled) rebuildOfficeHalos(originalGeojson);
+      if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
       else setHaloData(HALO_OFFICES_SOURCE, emptyFC());
 
       updateLegend();
@@ -1092,4 +1117,3 @@
   </script>
 </body>
 </html>
-
