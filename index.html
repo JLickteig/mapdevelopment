@@ -388,7 +388,7 @@
     function updateOfficesToggleIcon(show) {
       const btn = document.getElementById('toggle-offices');
       if (!btn) return;
-      btn.textContent = show ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>';
+      btn.textContent = show ? <i class="fa-solid fa-eye"></i> : <i class="fa-solid fa-eye-slash"></i>;
       btn.setAttribute('aria-pressed', String(show));
       btn.title = show ? 'Hide markers' : 'Show markers';
     }
