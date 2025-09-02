@@ -19,7 +19,7 @@
   <!-- Turf (fallback + dissolve) -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
 
   <style>
     :root {
@@ -261,6 +261,12 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <script>
+
+    // Inline SVGs for visibility toggles
+const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
+
+const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="18" height="18" aria-hidden="true"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
+
     // === Tokens ===
     mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
     const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
@@ -387,13 +393,14 @@
     function nl2br(s='') { return String(s).replace(/\n|\r\n|\r/g, '<br>'); }
 
     // Offices eye icon updater
-    function updateOfficesToggleIcon(show) {
-      const btn = document.getElementById('toggle-offices');
-      if (!btn) return;
-      btn.textContent = show ? '👁' : ' ';
-      btn.setAttribute('aria-pressed', String(show));
-      btn.title = show ? 'Hide markers' : 'Show markers';
-    }
+function updateOfficesToggleIcon(show) {
+  const btn = document.getElementById('toggle-offices');
+  if (!btn) return;
+  btn.innerHTML = show ? ICON_EYE : ICON_EYE_OFF;
+  btn.setAttribute('aria-pressed', String(show));
+  btn.title = show ? 'Hide markers' : 'Show markers';
+}
+
 
     // Offices visibility helpers
     function isOfficesVisible() {
@@ -748,14 +755,18 @@
       pickr.on('hide',   restoreAfterPickr);
 
 const toggleBtn = document.getElementById(`toggle-${layerId}`);
-toggleBtn.textContent = '👁'; // initial state
+toggleBtn.innerHTML = ICON_EYE;           // initial icon
+toggleBtn.setAttribute('aria-pressed', 'true');  // added
+
 toggleBtn.addEventListener('click', () => {
   visible = !visible;
   map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-  toggleBtn.textContent = visible ? '👁' : '👁̶';
+  toggleBtn.innerHTML = visible ? ICON_EYE : ICON_EYE_OFF;
+  toggleBtn.setAttribute('aria-pressed', String(visible));  // added
   toggleBtn.title = visible ? 'Hide markers' : 'Show markers';
   updateLegend();
 });
+
 
 
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
