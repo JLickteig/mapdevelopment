@@ -29,7 +29,6 @@
       --shadow: 0 4px 12px rgba(0,0,0,0.08);
       --radius: 14px;
     }
-
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
     #map { position: absolute; inset: 0; }
@@ -48,67 +47,22 @@
       padding: 14px;
       z-index: 5;
     }
-    .panel-section {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-      background: #fff;
-      overflow: visible;
-    }
-    .section-title {
-      font-weight: 600;
-      font-size: 14px;
-      margin: 0 0 8px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    .panel-section { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #fff; overflow: visible; }
+    .section-title { font-weight: 600; font-size: 14px; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; }
     .hr { height: 1px; background: var(--line); margin: 12px 0; }
 
     /* Segmented Toggle */
-    .segmented {
-      display: inline-flex;
-      border: 1.5px solid var(--brand);
-      border-radius: 999px;
-      overflow: hidden;
-      user-select: none;
-    }
-    .segmented button {
-      padding: 8px 12px;
-      font-size: 13px;
-      border: none;
-      background: #fff;
-      color: var(--brand);
-      cursor: pointer;
-    }
+    .segmented { display: inline-flex; border: 1.5px solid var(--brand); border-radius: 999px; overflow: hidden; user-select: none; }
+    .segmented button { padding: 8px 12px; font-size: 13px; border: none; background: #fff; color: var(--brand); cursor: pointer; }
     .segmented button.active { background: var(--brand); color: #fff; }
 
     /* Buttons */
-    .so-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 10px 14px;
-      font-size: 14px;
-      color: #000;
-      background: #fff;
-      border: 2px solid var(--brand);
-      border-radius: 999px;
-      cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
-    }
+    .so-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; font-size: 14px; color: #000; background: #fff; border: 2px solid var(--brand); border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
     .so-btn:hover { background: var(--brand); color: #fff; }
 
     /* Accordion */
     .accordion { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
-    .accordion-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 12px; cursor: pointer; background: #f8fafc;
-      font-weight: 600; font-size: 14px;
-    }
+    .accordion-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; cursor: pointer; background: #f8fafc; font-weight: 600; font-size: 14px; }
     .chev { width: 12px; height: 12px; background: var(--brand); clip-path: polygon(100% 100%, 100% 0, 0 100%); transition: transform .15s; transform-origin: 50% 50%; }
     .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
     .accordion-body { display: none; padding: 10px; }
@@ -120,67 +74,11 @@
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
 
-    /* File input button */
-    input[type="file"] { width: 100%; font-size: 13px; }
-    input[type="file"]::file-selector-button {
-      font-size: 12px; font-weight: 600; color: #000; background: #fff;
-      border: 2px solid var(--brand); border-radius: 999px; padding: 6px 12px; margin-right: 10px; cursor: pointer;
-      transition: background .15s, color .15s;
-    }
-    input[type="file"]::file-selector-button:hover { background: var(--brand); color: #fff; }
-
-    /* Layer cards */
-    .layer-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; overflow: visible; }
-    .layer-card * { max-width: 100%; }
-    .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
-    .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
-    .layer-actions { display: flex; align-items: center; gap: 8px; }
-    .icon-btn{
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:8px;
-      width:32px;
-      height:32px;
-      padding:0;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      line-height:0;
-    }
-    .icon-btn:hover{ background:#f3f4f6; }
-    .icon-btn svg{
-      width:18px;
-      height:18px;
-      display:block;
-    }
-
-    .layer-body { display: grid; gap: 8px; }
-    .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .pickr { flex: 0 0 auto; }
-    .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
-
     /* Legend */
-    .map-legend {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 14px;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      border-radius: 10px;
-      padding: 8px 10px;
-      z-index: 4;
-      max-width: min(90%, 900px);
-    }
+    .map-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; background: transparent; border: none; box-shadow: none; border-radius: 10px; padding: 8px 10px; z-index: 4; max-width: min(90%, 900px); }
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
-
-    .pcr-app { z-index: 10002; }
   </style>
 </head>
 <body>
@@ -201,8 +99,7 @@
       <div class="section-title">Filters</div>
       <div class="accordion" id="acc-state">
         <div class="accordion-header" role="button" aria-expanded="false">
-          <span>State / Province</span>
-          <span class="chev"></span>
+          <span>State / Province</span><span class="chev"></span>
         </div>
         <div class="accordion-body">
           <label class="subhead">(Ctrl/Cmd + click to select multiple)</label>
@@ -214,8 +111,7 @@
       </div>
       <div class="accordion" id="acc-bu">
         <div class="accordion-header" role="button" aria-expanded="false">
-          <span>Business Unit</span>
-          <span class="chev"></span>
+          <span>Business Unit</span><span class="chev"></span>
         </div>
         <div class="accordion-body">
           <select id="buFilter" multiple size="6"></select>
@@ -246,83 +142,42 @@
         Hide non-matching states or provinces completely, or mask them so base map details faintly show through.
       </div>
     </div>
-
-    <!-- Layers -->
-    <div class="panel-section" id="layersSection">
-      <div class="section-title">Layers</div>
-      <div class="layer-card" aria-label="Offices layer">
-        <div class="layer-header">
-          <div class="layer-meta">
-            <strong>Salas O'Brien Offices</strong>
-            <span style="font-size:10px; color:#666666">Built-in</span>
-          </div>
-          <div class="layer-actions">
-            <button class="icon-btn" id="toggle-offices" title="Hide markers" aria-pressed="true"></button>
-          </div>
-        </div>
-        <div class="muted">This layer is filterable.</div>
-      </div>
-      <div id="uploadLayers"></div>
-      <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
-      <div style="height:8px;"></div>
-      <a href="#" id="downloadTemplate" class="muted" style="color:#E35920; font-weight: bold;">Download CSV template</a>
-      <div class="muted" style="margin-top:6px;">Add up to 3 more layers. <br><span style="color:#E35920; font-weight: bold;">NOTE</span> Template use is required.</div>
-    </div>
-
-    <!-- Tools -->
-    <div class="panel-section">
-      <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
-      <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert to Base Map</button>
-    </div>
   </aside>
 
   <!-- Map -->
   <div id="map"></div>
-  <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
-    <div id="legendItems"></div>
-  </div>
-
-  <!-- CSV parser -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <script>
-    // === Tokens ===
-    mapboxgl.accessToken = 'pk.ey...'; // your token here
-    const GOOGLE_MAPS_KEY = "AIza..."; // your key
-
+    mapboxgl.accessToken = 'pk.YOUR_TOKEN';
     const map = new mapboxgl.Map({
       container: 'map',
       style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
       center: [-98.5795, 39.8283],
-      zoom: 3,
-      preserveDrawingBuffer: true
+      zoom: 3
     });
-    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-    const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER = 'offices-layer';
+    let basemapHidden = false;
+    let maskOpacity = 1;
 
-    map.on('load', async () => {
-      // Your dataset + office layer load...
+    map.on('load', () => {
       map.addSource('boundaries', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm1-v4' });
+
+      // Mask layer BELOW markers
       map.addLayer({
         id: 'boundaries-mask',
         type: 'fill',
         source: 'boundaries',
         'source-layer': 'boundaries_admin_1',
         paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 }
-      }, OFFICE_LAYER);
+      });
     });
 
-    // === Basemap toggle controls ===
+    // Basemap toggle
     const basemapShowBtn = document.getElementById('basemapShow');
     const basemapHideBtn = document.getElementById('basemapHide');
     const maskStyleSection = document.getElementById('maskStyleSection');
     const maskSolidBtn = document.getElementById('maskSolid');
     const maskTransparentBtn = document.getElementById('maskTransparent');
-
-    let basemapHidden = false;
-    let maskOpacity = 1;
 
     function setBasemapMode(hide) {
       basemapHidden = hide;
@@ -354,9 +209,12 @@
       if (!basemapHidden) return;
       map.setPaintProperty('boundaries-mask', 'fill-opacity', maskOpacity);
       if (regions.length > 0) {
-        map.setFilter('boundaries-mask', ['!in', 'name_en', ...regions]);
+        const filter = ['!in', 'name_en'];
+        regions.forEach(r => filter.push(r));
+        map.setFilter('boundaries-mask', filter);
       } else {
-        map.setFilter('boundaries-mask', ['in', 'name_en', '___NEVER___']);
+        map.setFilter('boundaries-mask', null);
+        map.setPaintProperty('boundaries-mask', 'fill-opacity', 0);
       }
     }
   </script>
