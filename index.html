@@ -32,15 +32,109 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
     #map { position: absolute; inset: 0; }
-    /* Panel + styles unchanged… */
+    /* keep all your CSS here unchanged */
   </style>
 </head>
 <body>
-  <!-- === Panel UI stays exactly as you pasted === -->
-  <!-- Coverage, Filters, Basemap Regions, Layers, Tools -->
-  <!-- … your full panel HTML here (unchanged) … -->
+  <!-- === Full Control Panel === -->
+  <aside id="panel" aria-label="Controls">
+    <!-- Coverage -->
+    <div class="panel-section">
+      <div class="section-title">Coverage (3-hour drive)</div>
+      <div class="segmented" role="group" aria-label="Reach toggle">
+        <button id="reachOff" class="active" aria-pressed="true">Hide Reach</button>
+        <button id="reachOn" aria-pressed="false">Show Reach</button>
+      </div>
+      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
+    </div>
 
+    <!-- Filters -->
+    <div class="panel-section">
+      <div class="section-title">Filters</div>
+
+      <div class="accordion" id="acc-state">
+        <div class="accordion-header" role="button" aria-expanded="false">
+          <span>State / Province</span>
+          <span class="chev"></span>
+        </div>
+        <div class="accordion-body">
+          <label class="subhead">(Ctrl/Cmd + click to select multiple)</label>
+          <select id="regionFilter" multiple></select>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="so-btn" id="clearRegion" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion" id="acc-bu">
+        <div class="accordion-header" role="button" aria-expanded="false">
+          <span>Business Unit</span>
+          <span class="chev"></span>
+        </div>
+        <div class="accordion-body">
+          <select id="buFilter" multiple size="6"></select>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="so-btn" id="clearBU" type="button">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <button class="so-btn" id="clearFilters" type="button">Clear All Filters</button>
+    </div>
+
+    <!-- Basemap Regions -->
+    <div class="panel-section">
+      <div class="section-title">Basemap Regions</div>
+      <div class="segmented" role="group" aria-label="Basemap toggle">
+        <button id="basemapShow" class="active" aria-pressed="true">Show All</button>
+        <button id="basemapHide" aria-pressed="false">Hide Non-Matching</button>
+      </div>
+      <div id="maskStyleSection" style="margin-top:10px; display:none;">
+        <label class="subhead">Mask style:</label>
+        <div class="segmented" role="group" aria-label="Mask style toggle" style="margin-top:6px;">
+          <button id="maskSolid" class="active" aria-pressed="true">Solid White</button>
+          <button id="maskTransparent" aria-pressed="false">70% Transparent</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:6px;">
+        Hide non-matching states or provinces completely, or mask them so base map details faintly show through.
+      </div>
+    </div>
+
+    <!-- Layers -->
+    <div class="panel-section" id="layersSection">
+      <div class="section-title">Layers</div>
+      <div class="layer-card" aria-label="Offices layer">
+        <div class="layer-header">
+          <div class="layer-meta">
+            <strong>Salas O'Brien Offices</strong>
+            <span style="font-size:10px; color:#666666">Built-in</span>
+          </div>
+          <div class="layer-actions">
+            <button class="icon-btn" id="toggle-offices" title="Hide markers" aria-pressed="true"></button>
+          </div>
+        </div>
+        <div class="muted">This layer is filterable.</div>
+      </div>
+      <div id="uploadLayers"></div>
+      <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
+      <div style="height:8px;"></div>
+      <a href="#" id="downloadTemplate" class="muted" style="color:#E35920; font-weight: bold;">Download CSV template</a>
+      <div class="muted" style="margin-top:6px;">Add up to 3 more layers. <br><span style="color:#E35920; font-weight: bold;">NOTE</span> Template use is required.</div>
+    </div>
+
+    <!-- Tools -->
+    <div class="panel-section">
+      <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
+      <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert to Base Map</button>
+    </div>
+  </aside>
+
+  <!-- Map -->
   <div id="map"></div>
+
+  <!-- Legend -->
   <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
@@ -49,61 +143,33 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <script>
-    // === Tokens ===
-    mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
-    const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
+    // === Basemap toggle + mask fix ===
+    let basemapHidden = false;
+    let maskOpacity = 1; // default solid
 
-    const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
-      center: [-98.5795, 39.8283],
-      zoom: 3,
-      preserveDrawingBuffer: true
-    });
-    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-
-    // === Map load ===
-    map.on('load', async () => {
-      try {
-        const datasetUrl = 'https://api.mapbox.com/datasets/v1/jacquelickteig/cmehl5mrh2qmv1nkae937qkrh/features?access_token=' + mapboxgl.accessToken;
-        const res = await fetch(datasetUrl);
-        originalGeojson = await res.json();
-
-        map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
-        map.addLayer({ id: OFFICE_LAYER, type: 'circle', source: OFFICE_SOURCE, paint: { 'circle-radius': 6, 'circle-color': '#009de0' } });
-
-        ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
-
-        // === Boundaries source for masking ===
-        map.addSource('boundaries', {
-          type: 'vector',
-          url: 'mapbox://mapbox.boundaries-adm1-v4'
-        });
-
-        // Mask layer (default hidden, drawn *below* offices)
-        map.addLayer({
-          id: 'boundaries-mask',
-          type: 'fill',
-          source: 'boundaries',
-          'source-layer': 'boundaries_admin_1',
-          paint: {
-            'fill-color': '#ffffff',
-            'fill-opacity': 0
-          }
-        });
-
-        // … rest of your map.on('load') code unchanged …
-      } catch (e) {
-        console.error('Error loading dataset:', e);
+    function setBasemapMode(hide) {
+      basemapHidden = hide;
+      basemapShowBtn.classList.toggle('active', !hide);
+      basemapHideBtn.classList.toggle('active', hide);
+      maskStyleSection.style.display = hide ? 'block' : 'none';
+      if (!hide) {
+        map.setPaintProperty('boundaries-mask', 'fill-opacity', 0);
+        map.setFilter('boundaries-mask', null);
+      } else {
+        applyBasemapMask();
       }
-    });
+    }
 
-    // === Fixed applyBasemapMask ===
+    function setMaskStyle(solid) {
+      maskSolidBtn.classList.toggle('active', solid);
+      maskTransparentBtn.classList.toggle('active', !solid);
+      maskOpacity = solid ? 1 : 0.7;
+      if (basemapHidden) applyBasemapMask();
+    }
+
     function applyBasemapMask() {
       const { regions } = (window.__getActiveFilters && window.__getActiveFilters()) || { regions: [] };
-
       if (!basemapHidden) return;
-
       map.setPaintProperty('boundaries-mask', 'fill-opacity', maskOpacity);
 
       if (regions.length > 0) {
@@ -111,13 +177,25 @@
         regions.forEach(r => filter.push(r));
         map.setFilter('boundaries-mask', filter);
       } else {
-        // No regions selected → clear mask
         map.setFilter('boundaries-mask', null);
         map.setPaintProperty('boundaries-mask', 'fill-opacity', 0);
       }
     }
 
-    // … rest of your script (filters, halos, uploads, export, legend, etc.) stays exactly as you had …
+    // === Map load ===
+    map.on('load', async () => {
+      // … your existing dataset load, offices, halos, etc. …
+
+      // Boundaries + mask layer
+      map.addSource('boundaries', { type: 'vector', url: 'mapbox://mapbox.boundaries-adm1-v4' });
+      map.addLayer({
+        id: 'boundaries-mask',
+        type: 'fill',
+        source: 'boundaries',
+        'source-layer': 'boundaries_admin_1',
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 }
+      });
+    });
   </script>
 </body>
 </html>
