@@ -236,6 +236,36 @@
       <button class="so-btn" id="clearFilters" type="button">Clear All Filters</button>
     </div>
 
+    
+<!-- Basemap Regions -->
+<div class="panel-section">
+  <div class="section-title">Basemap Regions</div>
+
+  <!-- Segmented toggle for show/hide -->
+  <div class="segmented" role="group" aria-label="Basemap toggle">
+    <button id="basemapShow" class="active" aria-pressed="true">Show All</button>
+    <button id="basemapHide" aria-pressed="false">Hide Non-Matching</button>
+  </div>
+
+  <!-- Mask style (hidden by default) -->
+  <div id="maskStyleSection" style="margin-top:10px; display:none;">
+    <label class="subhead">Mask style:</label>
+    <div class="segmented" role="group" aria-label="Mask style toggle" style="margin-top:6px;">
+      <button id="maskSolid" class="active" aria-pressed="true">Solid White</button>
+      <button id="maskTransparent" aria-pressed="false">70% Transparent</button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-top:6px;">
+    Hide non-matching states or provinces completely, or mask them so base map details faintly show through.
+  </div>
+</div>
+
+
+
+
+
+
     <!-- Layers -->
     <div class="panel-section" id="layersSection">
       <div class="section-title">Layers</div>
@@ -456,6 +486,25 @@ function updateOfficesToggleIcon(show) {
 
         ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
 
+        // Boundaries source for masking
+map.addSource('boundaries', {
+  type: 'vector',
+  url: 'mapbox://mapbox.boundaries-adm1-v4'
+});
+
+// Mask layer (off by default, drawn below office markers)
+map.addLayer({
+  id: 'boundaries-mask',
+  type: 'fill',
+  source: 'boundaries',
+  'source-layer': 'boundaries_admin_1',
+  paint: {
+    'fill-color': '#ffffff',
+    'fill-opacity': 0
+  }
+}, OFFICE_LAYER);
+
+
         // Offices eye toggle hookup
         const officesBtn = document.getElementById('toggle-offices');
         let officesVisible = true;
@@ -475,6 +524,65 @@ function updateOfficesToggleIcon(show) {
         console.error('Error loading dataset:', e);
       }
     });
+// === Basemap toggle controls ===
+const basemapShowBtn = document.getElementById('basemapShow');
+const basemapHideBtn = document.getElementById('basemapHide');
+const maskStyleSection = document.getElementById('maskStyleSection');
+const maskSolidBtn = document.getElementById('maskSolid');
+const maskTransparentBtn = document.getElementById('maskTransparent');
+
+let basemapHidden = false;
+let maskOpacity = 1; // default solid
+
+function setBasemapMode(hide) {
+  basemapHidden = hide;
+
+  basemapShowBtn.classList.toggle('active', !hide);
+  basemapShowBtn.setAttribute('aria-pressed', String(!hide));
+  basemapHideBtn.classList.toggle('active', hide);
+  basemapHideBtn.setAttribute('aria-pressed', String(hide));
+
+  maskStyleSection.style.display = hide ? 'block' : 'none';
+
+  if (!hide) {
+    // Reset mask
+    map.setPaintProperty('boundaries-mask', 'fill-opacity', 0);
+    map.setFilter('boundaries-mask', null);
+  } else {
+    applyBasemapMask();
+  }
+}
+
+function setMaskStyle(solid) {
+  maskSolidBtn.classList.toggle('active', solid);
+  maskSolidBtn.setAttribute('aria-pressed', String(solid));
+  maskTransparentBtn.classList.toggle('active', !solid);
+  maskTransparentBtn.setAttribute('aria-pressed', String(!solid));
+  maskOpacity = solid ? 1 : 0.7;
+  if (basemapHidden) applyBasemapMask();
+}
+
+basemapShowBtn.addEventListener('click', () => setBasemapMode(false));
+basemapHideBtn.addEventListener('click', () => setBasemapMode(true));
+maskSolidBtn.addEventListener('click', () => setMaskStyle(true));
+maskTransparentBtn.addEventListener('click', () => setMaskStyle(false));
+
+// Called whenever filters change AND when Hide Non-Matching is active
+function applyBasemapMask() {
+  const { regions } = (window.__getActiveFilters && window.__getActiveFilters()) || { regions: [] };
+
+  if (!basemapHidden) return;
+
+  map.setPaintProperty('boundaries-mask', 'fill-opacity', maskOpacity);
+
+  if (regions.length > 0) {
+    // Keep only selected states/provinces
+    map.setFilter('boundaries-mask', ['!in', ['get', 'name_en'], ['literal', regions]]);
+  } else {
+    // If no filters, mask nothing
+    map.setFilter('boundaries-mask', ['in', 'name_en', '___NEVER___']);
+  }
+}
 
     // Filters
     function buildFilters(gj) {
@@ -525,7 +633,10 @@ function updateOfficesToggleIcon(show) {
         for (const layer of uploadLayers) {
           if (layer.filterActive) applyFiltersToUploadLayer(layer);
         }
+        if (basemapHidden) applyBasemapMask();
+
       }
+      
 
       document.getElementById('clearRegion').addEventListener('click', () => { regionSelect.selectedIndex = -1; applyFilters(); });
       document.getElementById('clearBU').addEventListener('click', () => { buSelect.selectedIndex = -1; applyFilters(); });
@@ -539,6 +650,8 @@ function updateOfficesToggleIcon(show) {
             if (src) { src.setData(layer.originalFC); layer.currentFC = layer.originalFC; }
           }
         }
+
+          if (basemapHidden) applyBasemapMask();
       });
 
       regionSelect.addEventListener('change', applyFilters);
@@ -1116,6 +1229,9 @@ toggleBtn.addEventListener('click', () => {
       else setHaloData(HALO_OFFICES_SOURCE, emptyFC());
 
       updateLegend();
+
+      setBasemapMode(false); // reset basemap toggle to Show All
+
     });
 
     // ===== Template CSV download (under +Add Layer) =====
