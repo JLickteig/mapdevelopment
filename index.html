@@ -49,6 +49,12 @@
     .so-btn:hover { background:var(--brand); color:#fff; }
     .muted { font-size:12px; color:var(--muted); }
 
+    /* Accordion */
+    .accordion { border:1px solid var(--line); border-radius:10px; margin-bottom:10px; }
+    .accordion-header { display:flex; justify-content:space-between; align-items:center; padding:10px; cursor:pointer; font-weight:600; font-size:14px; background:#f8fafc; }
+    .accordion-body { display:none; padding:10px; }
+    .accordion-header[aria-expanded="true"] + .accordion-body { display:block; }
+
     /* Legend */
     .map-legend { position:absolute; left:50%; transform:translateX(-50%); bottom:14px; background:rgba(255,255,255,0.9); border-radius:8px; padding:6px 12px; box-shadow:var(--shadow); z-index:4; }
     #legendItems { display:flex; flex-wrap:wrap; gap:10px 16px; }
@@ -61,15 +67,33 @@
   <aside id="panel">
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
-      <button id="reachOff" class="so-btn">Hide Reach</button>
-      <button id="reachOn" class="so-btn">Show Reach</button>
+      <div style="display:flex; gap:6px;">
+        <button id="reachOff" class="so-btn">Hide Reach</button>
+        <button id="reachOn" class="so-btn">Show Reach</button>
+      </div>
+      <div class="muted">Shows a 3-hour driving area around offices.</div>
     </div>
 
     <div class="panel-section">
       <div class="section-title">Filters</div>
-      <label class="muted">(Ctrl/Cmd + click for multi-select)</label>
-      <select id="regionFilter" multiple></select>
-      <button class="so-btn" id="clearFilters">Clear Filters</button>
+
+      <div class="accordion">
+        <div class="accordion-header" role="button" aria-expanded="false">State / Province</div>
+        <div class="accordion-body">
+          <select id="regionFilter" multiple></select>
+          <button class="so-btn" id="clearRegion">Clear</button>
+        </div>
+      </div>
+
+      <div class="accordion">
+        <div class="accordion-header" role="button" aria-expanded="false">Business Unit</div>
+        <div class="accordion-body">
+          <select id="buFilter" multiple></select>
+          <button class="so-btn" id="clearBU">Clear</button>
+        </div>
+      </div>
+
+      <button class="so-btn" id="clearFilters">Clear All Filters</button>
     </div>
 
     <div class="panel-section">
@@ -132,13 +156,14 @@
     updateLegend();
   });
 
-  // === Reach Toggle ===
+  // === Reach Toggle (Turf Circles) ===
   document.getElementById('reachOn').onclick = ()=>{ reachEnabled = true; rebuildHalos(); };
   document.getElementById('reachOff').onclick = ()=>{ reachEnabled = false; map.getSource(HALO_SOURCE).setData({type:"FeatureCollection",features:[]}); };
 
-  async function rebuildHalos() {
+  function rebuildHalos() {
     if (!reachEnabled) return;
-    const pts = originalGeojson.features.filter(f=>f.geometry.type==="Point");
+    const pts = map.getSource(OFFICE_SOURCE)._data.features.filter(f=>f.geometry.type==="Point");
+    if (!pts.length) return;
     const buffers = pts.map(f=>turf.circle(f.geometry.coordinates, 289.7,{steps:64,units:'kilometers'}));
     const merged = turf.union(...buffers);
     map.getSource(HALO_SOURCE).setData({type:"FeatureCollection",features:[merged]});
@@ -146,20 +171,49 @@
 
   // === Filters ===
   function buildFilters(gj){
-    const sel = document.getElementById('regionFilter');
-    sel.innerHTML = '';
-    [...new Set(gj.features.map(f=>f.properties.state).filter(Boolean))].sort().forEach(s=>{
-      const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);
-    });
-    sel.onchange = ()=>applyFilters();
-    document.getElementById('clearFilters').onclick = ()=>{ sel.selectedIndex=-1; map.getSource(OFFICE_SOURCE).setData(originalGeojson); };
+    const regionSel=document.getElementById('regionFilter');
+    const buSel=document.getElementById('buFilter');
+    regionSel.innerHTML=''; buSel.innerHTML='';
+
+    const states=[...new Set(gj.features.map(f=>f.properties.state).filter(Boolean))].sort();
+    const bus=[...new Set(gj.features.map(f=>f.properties.bu).filter(Boolean))].sort();
+    states.forEach(s=>{ const o=document.createElement('option');o.value=s;o.textContent=s;regionSel.appendChild(o); });
+    bus.forEach(b=>{ const o=document.createElement('option');o.value=b;o.textContent=b;buSel.appendChild(o); });
+
+    function applyFilters(){
+      const selStates=[...regionSel.selectedOptions].map(o=>o.value);
+      const selBus=[...buSel.selectedOptions].map(o=>o.value);
+      const filtered={type:"FeatureCollection",features:originalGeojson.features.filter(f=>{
+        let ok=true;
+        if(selStates.length) ok=selStates.includes(f.properties.state);
+        if(ok&&selBus.length) ok=selBus.includes(f.properties.bu);
+        return ok;
+      })};
+      map.getSource(OFFICE_SOURCE).setData(filtered);
+      if(reachEnabled) rebuildHalos();
+      uploadLayers.forEach(l=>{ if(l.filterActive) applyFiltersToUploadLayer(l,selStates,selBus); });
+    }
+
+    regionSel.onchange=applyFilters; buSel.onchange=applyFilters;
+    document.getElementById('clearRegion').onclick=()=>{regionSel.selectedIndex=-1;applyFilters();};
+    document.getElementById('clearBU').onclick=()=>{buSel.selectedIndex=-1;applyFilters();};
+    document.getElementById('clearFilters').onclick=()=>{regionSel.selectedIndex=-1;buSel.selectedIndex=-1;map.getSource(OFFICE_SOURCE).setData(originalGeojson);if(reachEnabled) rebuildHalos();uploadLayers.forEach(l=>resetUploadLayer(l));};
   }
-  function applyFilters(){
-    const sel = document.getElementById('regionFilter');
-    const vals = Array.from(sel.selectedOptions).map(o=>o.value);
-    const filtered={type:"FeatureCollection",features:originalGeojson.features.filter(f=>!vals.length||vals.includes(f.properties.state))};
-    map.getSource(OFFICE_SOURCE).setData(filtered);
-    if(reachEnabled) rebuildHalos();
+
+  function applyFiltersToUploadLayer(layer,selStates,selBus){
+    const filtered={type:"FeatureCollection",features:layer.original.features.filter(f=>{
+      let ok=true;
+      if(selStates.length) ok=selStates.includes(f.properties.state);
+      if(ok&&selBus.length) ok=selBus.includes(f.properties.bu);
+      return ok;
+    })};
+    map.getSource(layer.id).setData(filtered);
+    layer.current=filtered;
+  }
+
+  function resetUploadLayer(layer){
+    map.getSource(layer.id).setData(layer.original);
+    layer.current=layer.original;
   }
 
   // === Office Popups ===
@@ -169,7 +223,7 @@
       map.getCanvas().style.cursor='pointer';
       const p=e.features[0].properties||{};
       popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-        `<strong style="color:#009DE0">${p.officeName||''}</strong><br>${p.address||''}<br>${p.bu||''}`
+        `<strong style="color:#009DE0">${p.officeName||''}</strong><br>${p.address||''}<br>${p.phone||''}<br>${p.bu||''}`
       ).addTo(map);
     });
     map.on('mouseleave',OFFICE_LAYER,()=>{ map.getCanvas().style.cursor=''; popup.remove(); });
@@ -183,25 +237,67 @@
     uploadLayers.forEach(l=>{ if(l.visible) items.innerHTML+=`<div class="legend-item"><span class="legend-swatch" style="background:${l.color}"></span>${l.name}</div>`; });
   }
 
-  // === CSV Upload Layers ===
-  document.getElementById('addLayerBtn').onclick = ()=>{ if(layerCount<MAX_LAYERS) addUploadLayer(); };
+  // === Upload Layers (full cards with Pickr, toggle, remove, filters) ===
+  document.getElementById('addLayerBtn').onclick=()=>{ if(layerCount<MAX_LAYERS) addUploadLayer(); };
 
   function addUploadLayer(){
     layerCount++;
     const id="upload-"+layerCount;
     const color=['#e11d48','#16a34a','#f59e0b'][layerCount-1];
-    const src={id,name:"Layer "+layerCount,color,visible:true,features:[]};
-    uploadLayers.push(src);
+    const card=document.createElement('div');
+    card.className="panel-section";
+    card.innerHTML=`
+      <div><input id="name-${id}" value="Layer ${layerCount}" /></div>
+      <div><div id="picker-${id}"></div></div>
+      <label><input type="checkbox" id="link-${id}"> Use filters</label>
+      <input type="file" id="file-${id}" accept=".csv" />
+      <button id="toggle-${id}" class="so-btn">👁</button>
+      <button id="remove-${id}" class="so-btn">✕</button>
+      <div id="status-${id}" class="muted"></div>
+    `;
+    document.getElementById('uploadLayers').appendChild(card);
 
     map.addSource(id,{type:'geojson',data:{type:"FeatureCollection",features:[]}});
     map.addLayer({id:id+"-layer",type:'circle',source:id,paint:{'circle-radius':6,'circle-color':color}});
 
-    // TODO: Add UI controls (name edit, file input, color picker) same pattern as before
+    const pickr=Pickr.create({el:`#picker-${id}`,theme:'classic',default:color,components:{preview:true,opacity:false,hue:true,interaction:{hex:true,input:true,save:true}}});
+    const layerRec={id,name:"Layer "+layerCount,color,visible:true,filterActive:false,original:{type:"FeatureCollection",features:[]},current:{type:"FeatureCollection",features:[]},pickr};
+    uploadLayers.push(layerRec);
+
+    pickr.on('change',c=>{layerRec.color=c.toHEXA().toString();map.setPaintProperty(id+"-layer",'circle-color',layerRec.color);updateLegend();});
+
+    document.getElementById(`toggle-${id}`).onclick=()=>{layerRec.visible=!layerRec.visible;map.setLayoutProperty(id+"-layer",'visibility',layerRec.visible?'visible':'none');updateLegend();};
+    document.getElementById(`remove-${id}`).onclick=()=>{map.removeLayer(id+"-layer");map.removeSource(id);card.remove();uploadLayers=uploadLayers.filter(l=>l.id!==id);updateLegend();};
+    document.getElementById(`name-${id}`).oninput=e=>{layerRec.name=e.target.value;updateLegend();};
+    document.getElementById(`link-${id}`).onchange=e=>{layerRec.filterActive=e.target.checked;};
+    document.getElementById(`file-${id}`).onchange=e=>handleCSVUpload(e.target.files[0],layerRec,`status-${id}`);
+
     updateLegend();
   }
 
+  function handleCSVUpload(file,layerRec,statusId){
+    const status=document.getElementById(statusId);
+    if(!file) return;
+    Papa.parse(file,{header:true,skipEmptyLines:'greedy',complete:results=>{
+      const features=[];
+      results.data.forEach(row=>{
+        let lat=parseFloat(row.Latitude); let lng=parseFloat(row.Longitude);
+        if(isFinite(lat)&&isFinite(lng)){
+          features.push({type:"Feature",geometry:{type:"Point",coordinates:[lng,lat]},properties:{
+            officeName:row["LABEL"]||row["Label"]||"",address:row.ADDRESS||"",state:row["STATE / PROVINCE"]||"",bu:row["BU"]||"",color:layerRec.color
+          }});
+        }
+      });
+      const fc={type:"FeatureCollection",features};
+      map.getSource(layerRec.id).setData(fc);
+      layerRec.original=fc; layerRec.current=fc;
+      status.textContent=`✅ ${features.length} points loaded`;
+      updateLegend();
+    }});
+  }
+
   // === Export ===
-  document.getElementById('exportMap').onclick=async()=>{
+  document.getElementById('exportMap').onclick=()=>{
     const canvas=map.getCanvas();
     const url=canvas.toDataURL("image/png");
     const a=document.createElement('a');a.href=url;a.download="map.png";a.click();
@@ -210,8 +306,13 @@
   // === Revert ===
   document.getElementById('revertMap').onclick=()=>{
     uploadLayers.forEach(l=>{ if(map.getLayer(l.id+"-layer")) map.removeLayer(l.id+"-layer"); if(map.getSource(l.id)) map.removeSource(l.id); });
-    uploadLayers=[];layerCount=0; map.getSource(OFFICE_SOURCE).setData(originalGeojson); updateLegend();
+    uploadLayers=[];layerCount=0; map.getSource(OFFICE_SOURCE).setData(originalGeojson);updateLegend();
   };
+
+  // Accordion behavior
+  document.querySelectorAll('.accordion-header').forEach(h=>{
+    h.addEventListener('click',()=>{const exp=h.getAttribute('aria-expanded')==='true';h.setAttribute('aria-expanded',String(!exp));});
+  });
 </script>
 </body>
 </html>
