@@ -5,189 +5,213 @@
   <title>Salas O'Brien Offices Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- MapLibre GL -->
+  <!-- MapLibre -->
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
-  <!-- html2canvas for export (legend capture) -->
+  <!-- html2canvas -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-  <!-- Pickr (Color Picker) -->
+  <!-- Pickr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
   <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+
   <style>
     :root {
       --brand: #009de0;
-      --bg: #ffffff;
+      --bg: #fff;
       --text: #111;
       --muted: #666;
       --line: #e5e7eb;
       --shadow: 0 4px 12px rgba(0,0,0,0.08);
       --radius: 14px;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
-    #map { position: absolute; inset: 0; }
+    body { margin:0; font-family:system-ui, sans-serif; color:var(--text); }
+    #map { position:absolute; inset:0; }
 
-    /* Panel styling (unchanged) */
+    /* Panel */
     #panel {
-      position: absolute;
-      top: 14px; left: 14px;
-      width: 320px;
-      max-height: calc(100vh - 28px);
-      overflow: auto;
-      background: var(--bg);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 14px;
-      z-index: 5;
+      position:absolute; top:14px; left:14px;
+      width:320px; max-height:calc(100vh - 28px);
+      overflow:auto; background:var(--bg);
+      border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:14px; z-index:5;
     }
-    .panel-section { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #fff; }
-    .section-title { font-weight: 600; font-size: 14px; margin: 0 0 8px 0; }
-    .so-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; font-size: 14px; color: #000; background: #fff; border: 2px solid var(--brand); border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
-    .so-btn:hover { background: var(--brand); color: #fff; }
-    .muted { color: var(--muted); font-size: 12px; }
-    .map-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 4; }
-    #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
-    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+    .panel-section { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; background:#fff; }
+    .section-title { font-weight:600; font-size:14px; margin:0 0 8px; }
+    .so-btn { display:inline-flex; justify-content:center; align-items:center; padding:10px 14px; border:2px solid var(--brand); border-radius:999px; background:#fff; cursor:pointer; margin-top:6px; }
+    .so-btn:hover { background:var(--brand); color:#fff; }
+    .muted { font-size:12px; color:var(--muted); }
+
+    /* Legend */
+    .map-legend { position:absolute; left:50%; transform:translateX(-50%); bottom:14px; background:rgba(255,255,255,0.9); border-radius:8px; padding:6px 12px; box-shadow:var(--shadow); z-index:4; }
+    #legendItems { display:flex; flex-wrap:wrap; gap:10px 16px; }
+    .legend-item { display:flex; align-items:center; gap:6px; }
+    .legend-swatch { width:14px; height:14px; border-radius:3px; }
   </style>
 </head>
 <body>
-  <!-- Control Panel -->
+  <!-- Panel -->
   <aside id="panel">
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
-      <div class="segmented" role="group" aria-label="Reach toggle">
-        <button id="reachOff" class="active">Hide Reach</button>
-        <button id="reachOn">Show Reach</button>
-      </div>
+      <button id="reachOff" class="so-btn">Hide Reach</button>
+      <button id="reachOn" class="so-btn">Show Reach</button>
     </div>
 
     <div class="panel-section">
       <div class="section-title">Filters</div>
-      <label class="subhead">(Ctrl/Cmd + click to select multiple)</label>
+      <label class="muted">(Ctrl/Cmd + click for multi-select)</label>
       <select id="regionFilter" multiple></select>
-      <button class="so-btn" id="clearFilters" type="button">Clear Filters</button>
+      <button class="so-btn" id="clearFilters">Clear Filters</button>
     </div>
 
     <div class="panel-section">
       <div class="section-title">Layers</div>
       <div id="uploadLayers"></div>
-      <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
+      <button class="so-btn" id="addLayerBtn">+ Add Layer</button>
+      <a href="https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv" download>Download CSV template</a>
     </div>
 
     <div class="panel-section">
-      <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
-      <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert</button>
+      <button class="so-btn" id="exportMap">Export Map</button>
+      <button class="so-btn" id="revertMap">Revert</button>
     </div>
   </aside>
 
-  <!-- Map -->
   <div id="map"></div>
   <div id="legend" class="map-legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
 
-  <!-- CSV parser -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+<script>
+  // === CONFIG ===
+  const MAPTILER_KEY = "8V0rViEioVaen5HD4wBV";
+  const MAP_STYLE = "https://api.maptiler.com/maps/01997743-cfd2-751b-8d35-2d71fee39521/style.json?key=" + MAPTILER_KEY;
+  const GOOGLE_SHEET_GEOJSON_URL = "https://script.google.com/macros/s/AKfycbzBqCDOsIyd9D8gn274QEv7clyilhQuqudXFzeo9xuDNEzQZXNtnQ9ImKg01sjJk9CF/exec";
 
-  <script>
-    // === CONFIG ===
-    const MAPTILER_KEY = "8V0rViEioVaen5HD4wBV";
-    const MAP_STYLE = "https://api.maptiler.com/maps/01997743-cfd2-751b-8d35-2d71fee39521/style.json?key=" + MAPTILER_KEY;
-    const GOOGLE_SHEET_GEOJSON_URL = "https://script.google.com/macros/s/AKfycbzBqCDOsIyd9D8gn274QEv7clyilhQuqudXFzeo9xuDNEzQZXNtnQ9ImKg01sjJk9CF/exec";
+  const OFFICE_SOURCE = 'offices';
+  const OFFICE_LAYER = 'offices-layer';
+  const HALO_SOURCE = 'halo-offices';
+  const HALO_LAYER = 'halo-offices-fill';
+  const MAX_LAYERS = 3;
 
-    const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER = 'offices-layer';
-    const HALO_SOURCE = 'halo-offices';
-    const HALO_LAYER = 'halo-offices-fill';
+  let originalGeojson = null;
+  let uploadLayers = [];
+  let layerCount = 0;
+  let reachEnabled = false;
 
-    // === INIT MAP ===
-    const map = new maplibregl.Map({
-      container: 'map',
-      style: MAP_STYLE,
-      center: [-98.5795, 39.8283],
-      zoom: 3,
-      preserveDrawingBuffer: true
+  // === INIT MAP ===
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: MAP_STYLE,
+    center: [-98.5795, 39.8283],
+    zoom: 3,
+    preserveDrawingBuffer: true
+  });
+  map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+
+  map.on('load', async () => {
+    const res = await fetch(GOOGLE_SHEET_GEOJSON_URL);
+    originalGeojson = await res.json();
+
+    map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
+    map.addLayer({ id: OFFICE_LAYER, type:'circle', source: OFFICE_SOURCE, paint:{ 'circle-radius':6, 'circle-color':'#009de0' } });
+
+    map.addSource(HALO_SOURCE, { type:'geojson', data:{ type:"FeatureCollection", features: [] } });
+    map.addLayer({ id:HALO_LAYER, type:'fill', source:HALO_SOURCE, paint:{'fill-color':'#009de0','fill-opacity':0.2} });
+
+    wireOfficePopups();
+    buildFilters(originalGeojson);
+    updateLegend();
+  });
+
+  // === Reach Toggle ===
+  document.getElementById('reachOn').onclick = ()=>{ reachEnabled = true; rebuildHalos(); };
+  document.getElementById('reachOff').onclick = ()=>{ reachEnabled = false; map.getSource(HALO_SOURCE).setData({type:"FeatureCollection",features:[]}); };
+
+  async function rebuildHalos() {
+    if (!reachEnabled) return;
+    const pts = originalGeojson.features.filter(f=>f.geometry.type==="Point");
+    const buffers = pts.map(f=>turf.circle(f.geometry.coordinates, 289.7,{steps:64,units:'kilometers'}));
+    const merged = turf.union(...buffers);
+    map.getSource(HALO_SOURCE).setData({type:"FeatureCollection",features:[merged]});
+  }
+
+  // === Filters ===
+  function buildFilters(gj){
+    const sel = document.getElementById('regionFilter');
+    sel.innerHTML = '';
+    [...new Set(gj.features.map(f=>f.properties.state).filter(Boolean))].sort().forEach(s=>{
+      const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);
     });
-    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+    sel.onchange = ()=>applyFilters();
+    document.getElementById('clearFilters').onclick = ()=>{ sel.selectedIndex=-1; map.getSource(OFFICE_SOURCE).setData(originalGeojson); };
+  }
+  function applyFilters(){
+    const sel = document.getElementById('regionFilter');
+    const vals = Array.from(sel.selectedOptions).map(o=>o.value);
+    const filtered={type:"FeatureCollection",features:originalGeojson.features.filter(f=>!vals.length||vals.includes(f.properties.state))};
+    map.getSource(OFFICE_SOURCE).setData(filtered);
+    if(reachEnabled) rebuildHalos();
+  }
 
-    let originalGeojson = null;
-
-    map.on('load', async () => {
-      try {
-        const res = await fetch(GOOGLE_SHEET_GEOJSON_URL);
-        originalGeojson = await res.json();
-
-        map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
-        map.addLayer({
-          id: OFFICE_LAYER,
-          type: 'circle',
-          source: OFFICE_SOURCE,
-          paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
-        });
-
-        map.addSource(HALO_SOURCE, { type: 'geojson', data: { type:"FeatureCollection", features: [] } });
-        map.addLayer({
-          id: HALO_LAYER,
-          type: 'fill',
-          source: HALO_SOURCE,
-          paint: { 'fill-color': '#009de0', 'fill-opacity': 0.2 }
-        });
-
-        wireOfficePopups();
-        buildFilters(originalGeojson);
-      } catch (err) {
-        console.error("Error loading offices:", err);
-      }
+  // === Office Popups ===
+  function wireOfficePopups(){
+    const popup=new maplibregl.Popup({closeButton:false,closeOnClick:false});
+    map.on('mouseenter',OFFICE_LAYER,e=>{
+      map.getCanvas().style.cursor='pointer';
+      const p=e.features[0].properties||{};
+      popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+        `<strong style="color:#009DE0">${p.officeName||''}</strong><br>${p.address||''}<br>${p.bu||''}`
+      ).addTo(map);
     });
+    map.on('mouseleave',OFFICE_LAYER,()=>{ map.getCanvas().style.cursor=''; popup.remove(); });
+  }
 
-    // === Office popups ===
-    function wireOfficePopups() {
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
-      map.on('mouseenter', OFFICE_LAYER, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const p = e.features[0].properties || {};
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<div><strong style="color:#009DE0;">${p.officeName||''}</strong><br>${p.address||''}<br>${p.phone||''}<br>${p.bu||''}</div>`
-        ).addTo(map);
-      });
-      map.on('mouseleave', OFFICE_LAYER, () => { map.getCanvas().style.cursor = ''; popup.remove(); });
-    }
+  // === Legend ===
+  function updateLegend(){
+    const el=document.getElementById('legend'); el.style.display='block';
+    const items=document.getElementById('legendItems'); items.innerHTML='';
+    items.innerHTML+=`<div class="legend-item"><span class="legend-swatch" style="background:#009de0"></span>Offices</div>`;
+    uploadLayers.forEach(l=>{ if(l.visible) items.innerHTML+=`<div class="legend-item"><span class="legend-swatch" style="background:${l.color}"></span>${l.name}</div>`; });
+  }
 
-    // === Filters ===
-    function buildFilters(gj) {
-      const regionSelect = document.getElementById('regionFilter');
-      regionSelect.innerHTML = '';
-      const states = [...new Set(gj.features.map(f => f.properties.state).filter(Boolean))].sort();
-      states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; regionSelect.appendChild(o); });
+  // === CSV Upload Layers ===
+  document.getElementById('addLayerBtn').onclick = ()=>{ if(layerCount<MAX_LAYERS) addUploadLayer(); };
 
-      regionSelect.addEventListener('change', () => {
-        const selected = Array.from(regionSelect.selectedOptions).map(o => o.value);
-        const filtered = { type:"FeatureCollection", features: gj.features.filter(f => !selected.length || selected.includes(f.properties.state)) };
-        map.getSource(OFFICE_SOURCE).setData(filtered);
-      });
+  function addUploadLayer(){
+    layerCount++;
+    const id="upload-"+layerCount;
+    const color=['#e11d48','#16a34a','#f59e0b'][layerCount-1];
+    const src={id,name:"Layer "+layerCount,color,visible:true,features:[]};
+    uploadLayers.push(src);
 
-      document.getElementById('clearFilters').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1;
-        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-      });
-    }
+    map.addSource(id,{type:'geojson',data:{type:"FeatureCollection",features:[]}});
+    map.addLayer({id:id+"-layer",type:'circle',source:id,paint:{'circle-radius':6,'circle-color':color}});
 
-    // === Legend (simplified for demo) ===
-    function updateLegend() {
-      const legendEl = document.getElementById('legend');
-      legendEl.style.display = 'block';
-      const itemsEl = document.getElementById('legendItems');
-      itemsEl.innerHTML = `<div class="legend-item"><span class="legend-swatch" style="background:#009de0"></span>Salas O'Brien Offices</div>`;
-    }
-    map.on('load', updateLegend);
-  </script>
+    // TODO: Add UI controls (name edit, file input, color picker) same pattern as before
+    updateLegend();
+  }
+
+  // === Export ===
+  document.getElementById('exportMap').onclick=async()=>{
+    const canvas=map.getCanvas();
+    const url=canvas.toDataURL("image/png");
+    const a=document.createElement('a');a.href=url;a.download="map.png";a.click();
+  };
+
+  // === Revert ===
+  document.getElementById('revertMap').onclick=()=>{
+    uploadLayers.forEach(l=>{ if(map.getLayer(l.id+"-layer")) map.removeLayer(l.id+"-layer"); if(map.getSource(l.id)) map.removeSource(l.id); });
+    uploadLayers=[];layerCount=0; map.getSource(OFFICE_SOURCE).setData(originalGeojson); updateLegend();
+  };
+</script>
 </body>
 </html>
