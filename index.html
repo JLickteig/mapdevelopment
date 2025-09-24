@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Salas O'Brien Offices Map</title>
@@ -9,10 +9,10 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
-  <!-- html2canvas -->
+  <!-- html2canvas for export -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-  <!-- Pickr -->
+  <!-- Pickr (Color Picker) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
@@ -33,176 +33,1079 @@
       --radius: 14px;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
-    #map { position: absolute; inset: 0; }
-    #panel {
-      position: absolute; top: 14px; left: 14px;
-      width: 320px; max-height: calc(100vh - 28px); overflow: auto;
-      background: var(--bg); border: 1px solid var(--line);
-      border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 14px; z-index: 5;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
     }
-    .panel-section { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #fff; }
-    .section-title { font-weight: 600; font-size: 14px; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; }
-    .hr { height: 1px; background: var(--line); margin: 12px 0; }
-    .so-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px;
-      font-size: 14px; color: #000; background: #fff; border: 2px solid var(--brand); border-radius: 999px; cursor: pointer; }
-    .so-btn:hover { background: var(--brand); color: #fff; }
-    select { width: 100%; min-height: 160px; font-size: 13px; }
-    .map-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; background: transparent;
-      border: none; box-shadow: none; border-radius: 10px; padding: 8px 10px; z-index: 4; max-width: min(90%, 900px); }
-    #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
-    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+    #map { position: absolute; inset: 0; }
+
+    /* Panel */
+    #panel {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 340px;
+      max-height: calc(100vh - 28px);
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      z-index: 5;
+    }
+    .panel-section {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .section-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .subhead {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    select {
+      width: 100%;
+      min-height: 140px;
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 4px;
+    }
+    .so-btn {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      border: 2px solid var(--brand);
+      border-radius: 999px;
+      cursor: pointer;
+      background: #fff;
+      color: var(--brand);
+      transition: background 0.2s, color 0.2s;
+    }
+    .so-btn:hover {
+      background: var(--brand);
+      color: #fff;
+    }
+    .map-legend {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 14px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      z-index: 4;
+      min-width: 200px;
+    }
+    #legendItems {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+
+    /* Layer Cards */
+    .layer-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #fafafa;
+    }
+    .layer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .layer-meta input {
+      font-size: 13px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 2px 6px;
+      width: 120px;
+    }
+    .layer-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .icon-btn {
+      border: none;
+      background: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .layer-body .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .layer-body label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+
+    /* Segmented Buttons */
+    .segmented {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .segmented button {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: none;
+      background: #f8f9fa;
+      cursor: pointer;
+    }
+    .segmented button.active {
+      background: var(--brand);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
-  <aside id="panel">
+  <!-- Control Panel -->
+  <aside id="panel" aria-label="Controls">
+
+    <!-- Coverage -->
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
-      <div class="segmented" role="group">
-        <button id="reachOff" class="active">Hide Reach</button>
-        <button id="reachOn">Show Reach</button>
+      <div class="segmented" role="group" aria-label="Reach toggle">
+        <button id="reachOff" class="active" aria-pressed="true">Hide Reach</button>
+        <button id="reachOn" aria-pressed="false">Show Reach</button>
       </div>
     </div>
 
+    <!-- Country Visibility -->
     <div class="panel-section">
-      <div class="section-title">Filters</div>
-      <label>State / Province</label>
-      <select id="regionFilter" multiple></select>
-      <button class="so-btn" id="clearRegion">Clear</button>
-
-      <label>Business Unit</label>
-      <select id="buFilter" multiple size="6"></select>
-      <button class="so-btn" id="clearBU">Clear</button>
-      <div class="hr"></div>
-      <button class="so-btn" id="clearFilters">Clear All Filters</button>
+      <div class="section-title">Country Visibility</div>
+      <label style="font-size:13px; font-weight:600;">
+        <input type="checkbox" id="showOtherCountries"> Show other countries
+      </label>
+      <div id="countrySelectContainer" style="display:none; margin-top:8px;">
+        <label class="subhead">(Ctrl/Cmd + click to select multiple)</label>
+        <select id="countryFilter" multiple></select>
+      </div>
     </div>
 
+    <!-- Filters -->
+    <div class="panel-section">
+      <div class="section-title">Filters</div>
+      <label class="subhead">State / Province</label>
+      <select id="regionFilter" multiple></select>
+      <label class="subhead" style="margin-top:8px;">Business Unit</label>
+      <select id="buFilter" multiple></select>
+      <button class="so-btn" id="clearFilters" style="margin-top:8px;">Clear All Filters</button>
+    </div>
+
+    <!-- Layers -->
     <div class="panel-section" id="layersSection">
       <div class="section-title">Layers</div>
       <div id="uploadLayers"></div>
-      <button class="so-btn" id="addLayerBtn">+ Add Layer</button>
+      <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
+      <a href="#" id="downloadTemplate" class="subhead" style="color:#E35920; font-weight:bold; margin-top:8px; display:block;">Download CSV template</a>
     </div>
 
+    <!-- Tools -->
     <div class="panel-section">
       <button class="so-btn" id="exportMap">Export Map as PNG</button>
       <button class="so-btn" id="revertMap" style="margin-top:8px;">Revert to Base Map</button>
     </div>
   </aside>
 
+  <!-- Map -->
   <div id="map"></div>
-  <div id="legend" class="map-legend" style="display:none;">
+
+  <!-- Legend -->
+  <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
-
   <script>
-    const MAP_STYLE = "https://api.maptiler.com/maps/01997743-cfd2-751b-8d35-2d71fee39521/style.json?key=8V0rViEioVaen5HD4wBV";
-    const DATA_URL = "https://script.google.com/macros/s/AKfycbzBqCDOsIyd9D8gn274QEv7clyilhQuqudXFzeo9xuDNEzQZXNtnQ9ImKg01sjJk9CF/exec";
+    // === CONFIG ===
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbzBqCDOsIyd9D8gn274QEv7clyilhQuqudXFzeo9xuDNEzQZXNtnQ9ImKg01sjJk9CF/exec";
+    const MAPTILER_KEY = "4By2rNzfsW0OfnpNWtMV";
 
+    // === MAP INIT ===
     const map = new maplibregl.Map({
-      container: "map",
-      style: MAP_STYLE,
-      center: [-98.5795, 39.8283],
+      container: 'map',
+      style: `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`,
+      center: [-98.5795, 39.8283], // USA center
       zoom: 3,
       preserveDrawingBuffer: true
     });
+    map.setProjection({ name: 'lambertConformalConic' });
+    map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
-    // 👇 Lambert projection
-    map.setProjection({ name: "lambertConformalConic" });
-
-    map.addControl(new maplibregl.NavigationControl(), "bottom-right");
-
-    const OFFICE_SOURCE = "offices";
-    const OFFICE_LAYER = "offices-layer";
-    const HALO_SOURCE = "halo-offices";
-    const HALO_LAYER = "halo-offices-fill";
-
-    let originalGeojson = null;
-    let reachEnabled = false;
-
-    const emptyFC = () => ({ type: "FeatureCollection", features: [] });
-
-    function ensureHaloLayer() {
-      if (!map.getSource(HALO_SOURCE)) {
-        map.addSource(HALO_SOURCE, { type: "geojson", data: emptyFC() });
-      }
-      if (!map.getLayer(HALO_LAYER)) {
-        map.addLayer({ id: HALO_LAYER, type: "fill", source: HALO_SOURCE,
-          paint: { "fill-color": "#009de0", "fill-opacity": 0.2 } });
-      }
-    }
-    function setHaloData(fc) {
-      const src = map.getSource(HALO_SOURCE);
-      if (src) src.setData(fc);
-    }
-    async function rebuildOfficeHalos(data) {
-      if (!reachEnabled) return;
-      const pts = (data || originalGeojson).features.filter(f => f.geometry?.type === "Point");
-      const halos = pts.map(f => turf.circle(f.geometry.coordinates, 289.7, { steps: 128, units: "kilometers" }));
-      let merged = halos[0];
-      for (let i = 1; i < halos.length; i++) {
-        try { merged = turf.union(merged, halos[i]); } catch {}
-      }
-      setHaloData({ type: "FeatureCollection", features: merged ? [merged] : [] });
-    }
-
-    function buildFilters(gj) {
-      const regionSelect = document.getElementById("regionFilter");
-      const buSelect = document.getElementById("buFilter");
-      regionSelect.innerHTML = ""; buSelect.innerHTML = "";
-
-      const states = [...new Set(gj.features.filter(f => f.properties.country === "US").map(f => f.properties.state))].sort();
-      const provinces = [...new Set(gj.features.filter(f => f.properties.country === "CAN").map(f => f.properties.state))].sort();
-      const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
-
-      states.concat(provinces).forEach(s => {
-        const o = document.createElement("option"); o.value = s; o.textContent = s; regionSelect.appendChild(o);
-      });
-      bus.forEach(b => {
-        const o = document.createElement("option"); o.value = b; o.textContent = b; buSelect.appendChild(o);
+    // === COUNTRY MASK (default: US + CA only) ===
+    map.on('load', () => {
+      map.addSource('countries', {
+        type: 'vector',
+        url: `https://api.maptiler.com/tiles/admin-boundaries/tiles.json?key=${MAPTILER_KEY}`
       });
 
-      function getSelected(sel) { return Array.from(sel.selectedOptions).map(o => o.value); }
-      async function applyFilters() {
-        const regions = getSelected(regionSelect);
-        const busSel = getSelected(buSelect);
-        const filtered = { type: "FeatureCollection", features: originalGeojson.features.filter(f => {
-          const props = f.properties || {}; let ok = true;
-          if (regions.length && props.state && !regions.includes(props.state)) ok = false;
-          if (busSel.length && props.bu && !busSel.includes(props.bu)) ok = false;
-          return ok;
-        })};
-        map.getSource(OFFICE_SOURCE).setData(filtered);
-        if (reachEnabled) rebuildOfficeHalos(filtered);
-      }
-      regionSelect.addEventListener("change", applyFilters);
-      buSelect.addEventListener("change", applyFilters);
-      document.getElementById("clearRegion").addEventListener("click", () => { regionSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById("clearBU").addEventListener("click", () => { buSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById("clearFilters").addEventListener("click", () => {
-        regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
-        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-        if (reachEnabled) rebuildOfficeHalos(originalGeojson);
+      map.addLayer({
+        id: 'country-mask',
+        type: 'fill',
+        source: 'countries',
+        'source-layer': 'admin_boundaries',
+        paint: { 'fill-color': '#f8fafc', 'fill-opacity': 1 },
+        filter: ['in', 'iso_a2', 'US', 'CA']
       });
-    }
 
-    map.on("load", async () => {
-      const res = await fetch(DATA_URL);
-      originalGeojson = await res.json();
-
-      map.addSource(OFFICE_SOURCE, { type: "geojson", data: originalGeojson });
-      map.addLayer({ id: OFFICE_LAYER, type: "circle", source: OFFICE_SOURCE, paint: { "circle-radius": 6, "circle-color": "#009de0" } });
-
-      ensureHaloLayer();
-      buildFilters(originalGeojson);
-
-      // 👇 Focus map only on US + Canada
-      map.fitBounds([[-168, 18], [-52, 75]]);
+      // Once countries are loaded, add offices
+      loadOffices();
     });
 
-    document.getElementById("reachOn").addEventListener("click", () => { reachEnabled = true; rebuildOfficeHalos(); });
-    document.getElementById("reachOff").addEventListener("click", () => { reachEnabled = false; setHaloData(emptyFC()); });
+    // === HELPERS ===
+    const emptyFC = () => ({ type: 'FeatureCollection', features: [] });
+
+    function ensureFillLayer(sourceId, layerId, color, beforeLayerId) {
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, { type: 'geojson', data: emptyFC() });
+      }
+      if (!map.getLayer(layerId)) {
+        map.addLayer(
+          { id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } },
+          beforeLayerId
+        );
+      }
+    }
+
+    function setHaloData(sourceId, fc) {
+      const src = map.getSource(sourceId);
+      if (src) src.setData(fc);
+    }
+
+    // === LOAD OFFICES ===
+    async function loadOffices() {
+      try {
+        const res = await fetch(SHEET_URL);
+        const gj = await res.json();
+
+        const offices = {
+          type: "FeatureCollection",
+          features: gj.features.map(f => ({
+            type: "Feature",
+            geometry: f.geometry,
+            properties: {
+              officeName: f.properties["OFFICE NAME"] || "",
+              state: f.properties["STATE / PROVINCE"] || "",
+              bu: f.properties["BU"] || "",
+              phone: f.properties["MAIN PHONE"] || "",
+              address: f.properties["ADDRESS"] || "",
+              country: f.properties["COUNTRY"] || ""
+            }
+          }))
+        };
+
+        if (!map.getSource('offices')) {
+          map.addSource('offices', { type: 'geojson', data: offices });
+          map.addLayer({
+            id: 'offices-layer',
+            type: 'circle',
+            source: 'offices',
+            paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
+          });
+
+          ensureFillLayer('halo-offices', 'halo-offices-fill', '#009de0', 'offices-layer');
+          wireOfficePopups();
+        } else {
+          map.getSource('offices').setData(offices);
+        }
+
+        buildFilters(offices);
+
+      } catch (err) {
+        console.error("Failed to load offices:", err);
+      }
+    }
+    // === ISOCHRONE (HALO) USING TURF CIRCLES ===
+    const ISOCHRONE_MINUTES = 180; // 3 hours
+    const KM_PER_MIN = 1.609 * 60; // ~96.5 km per hour
+    const isoCache = new Map();
+
+    async function buildIsochronesForPoints(points) {
+      const polys = [];
+      for (const f of points) {
+        const [lng, lat] = f.geometry.coordinates;
+        const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
+        if (isoCache.has(key)) {
+          polys.push(isoCache.get(key));
+        } else {
+          const circle = turf.circle([lng, lat], ISOCHRONE_MINUTES * KM_PER_MIN, {
+            steps: 128,
+            units: 'kilometers'
+          });
+          isoCache.set(key, circle);
+          polys.push(circle);
+        }
+      }
+      return { type: 'FeatureCollection', features: polys };
+    }
+
+    function dissolvePolygons(fc) {
+      if (!fc?.features?.length) return emptyFC();
+      let merged = fc.features[0];
+      for (let i = 1; i < fc.features.length; i++) {
+        try { merged = turf.union(merged, fc.features[i]); }
+        catch (e) { console.warn('union failed, skipping a feature', e); }
+      }
+      return merged ? { type: 'FeatureCollection', features: [merged] } : emptyFC();
+    }
+
+    async function rebuildOfficeHalos(sourceData) {
+      if (!reachEnabled || !isOfficesVisible()) return;
+      const data = sourceData || map.getSource('offices')._data;
+      const pts = data.features.filter(f => f.geometry?.type === 'Point');
+      const fc = await buildIsochronesForPoints(pts);
+      const dissolved = dissolvePolygons(fc);
+      setHaloData('halo-offices', dissolved);
+    }
+
+    // === REACH TOGGLE ===
+    const reachOnBtn = document.getElementById('reachOn');
+    const reachOffBtn = document.getElementById('reachOff');
+    let reachEnabled = false;
+
+    function setReach(enabled) {
+      reachEnabled = enabled;
+      reachOnBtn.classList.toggle('active', enabled);
+      reachOnBtn.setAttribute('aria-pressed', String(enabled));
+      reachOffBtn.classList.toggle('active', !enabled);
+      reachOffBtn.setAttribute('aria-pressed', String(!enabled));
+
+      if (!map.isStyleLoaded()) return;
+      if (!enabled) {
+        setHaloData('halo-offices', emptyFC());
+      } else {
+        rebuildOfficeHalos();
+      }
+    }
+
+    reachOnBtn.addEventListener('click', () => setReach(true));
+    reachOffBtn.addEventListener('click', () => setReach(false));
+
+    // === FILTERS ===
+    function buildFilters(gj) {
+      const regionSelect = document.getElementById('regionFilter');
+      const buSelect = document.getElementById('buFilter');
+
+      regionSelect.innerHTML = '';
+      buSelect.innerHTML = '';
+
+      const states = [...new Set(gj.features.filter(f => f.properties.country === 'US')
+        .map(f => f.properties.state).filter(Boolean))].sort();
+      const provinces = [...new Set(gj.features.filter(f => f.properties.country === 'CAN')
+        .map(f => f.properties.state).filter(Boolean))].sort();
+      const bus = [...new Set(gj.features.map(f => f.properties.bu).filter(Boolean))].sort();
+
+      const caGroup = document.createElement('optgroup');
+      caGroup.label = 'Canada';
+      provinces.forEach(p => {
+        const o = document.createElement('option');
+        o.value = 'CAN|' + p;
+        o.textContent = p;
+        caGroup.appendChild(o);
+      });
+
+      const usGroup = document.createElement('optgroup');
+      usGroup.label = 'United States';
+      states.forEach(s => {
+        const o = document.createElement('option');
+        o.value = 'US|' + s;
+        o.textContent = s;
+        usGroup.appendChild(o);
+      });
+
+      regionSelect.appendChild(caGroup);
+      regionSelect.appendChild(usGroup);
+
+      bus.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b;
+        o.textContent = b;
+        buSelect.appendChild(o);
+      });
+
+      function getSelected(select) {
+        return Array.from(select.selectedOptions).map(o => o.value);
+      }
+
+      async function applyFilters() {
+        const regionsRaw = getSelected(regionSelect);
+        const regions = regionsRaw.map(v => v.split('|')[1]);
+        const busSel = getSelected(buSelect);
+
+        const filtered = {
+          type: 'FeatureCollection',
+          features: gj.features.filter(f => {
+            const props = f.properties || {};
+            let ok = true;
+            if (regions.length) {
+              const code = props.state || '';
+              if (!regions.includes(code)) ok = false;
+            }
+            if (busSel.length && props.bu && !busSel.includes(props.bu)) ok = false;
+            return ok;
+          })
+        };
+
+        map.getSource('offices').setData(filtered);
+        if (reachEnabled && isOfficesVisible()) await rebuildOfficeHalos(filtered);
+
+        for (const layer of uploadLayers) {
+          if (layer.filterActive) applyFiltersToUploadLayer(layer);
+        }
+      }
+
+      document.getElementById('clearRegion').addEventListener('click', () => {
+        regionSelect.selectedIndex = -1;
+        applyFilters();
+      });
+
+      document.getElementById('clearBU').addEventListener('click', () => {
+        buSelect.selectedIndex = -1;
+        applyFilters();
+      });
+
+      document.getElementById('clearFilters').addEventListener('click', () => {
+        regionSelect.selectedIndex = -1;
+        buSelect.selectedIndex = -1;
+        map.getSource('offices').setData(gj);
+        if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(gj);
+        for (const layer of uploadLayers) {
+          if (layer.filterActive && layer.originalFC) {
+            const src = map.getSource(layer.id);
+            if (src) {
+              src.setData(layer.originalFC);
+              layer.currentFC = layer.originalFC;
+            }
+          }
+        }
+      });
+
+      regionSelect.addEventListener('change', applyFilters);
+      buSelect.addEventListener('change', applyFilters);
+
+      window.__getActiveFilters = () => ({
+        regions: getSelected(regionSelect).map(v => v.split('|')[1]),
+        bus: getSelected(buSelect)
+      });
+    }
+    // === OFFICE POPUPS ===
+    function wireOfficePopups() {
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+      map.on('mouseenter', 'offices-layer', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const p = e.features[0].properties || {};
+        const officeName = p.officeName || '';
+        const address    = p.address || '';
+        const phone      = p.phone || '';
+        const bu         = p.bu || '';
+        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+          `<div style="line-height:1.2;">
+            <div style="font-weight:bold; color:#009DE0;">${officeName}</div>
+            <div style="font-size:11px; color:#333;">${address}</div>
+            <div style="font-size:11px; color:#666;">${phone}</div>
+            <div style="font-size:11px; color:#666;">${bu}</div>
+          </div>`
+        ).addTo(map);
+      });
+      map.on('mouseleave', 'offices-layer', () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+      });
+    }
+
+    // === LEGEND HANDLING ===
+    function updateLegend() {
+      const legendEl = document.getElementById('legend');
+      const itemsEl  = document.getElementById('legendItems');
+
+      const anyUserLayers = uploadLayers.length > 0 && uploadLayers.some(l => l.visible);
+
+      if (!anyUserLayers && !isOfficesVisible()) {
+        legendEl.style.display = 'none';
+        itemsEl.innerHTML = '';
+        return;
+      }
+
+      legendEl.style.display = '';
+      itemsEl.innerHTML = '';
+
+      if (isOfficesVisible()) {
+        addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+      }
+
+      for (const l of uploadLayers) {
+        if (!l.visible) continue;
+        const color = l.pickr.getColor().toHEXA().toString();
+        const normalized = normalizeHex(color);
+        const name = document.getElementById(l.nameInputId).value || 'Layer';
+        addLegendItem(itemsEl, normalized, name);
+      }
+    }
+
+    function addLegendItem(container, color, name) {
+      const row = document.createElement('div');
+      row.className = 'legend-item';
+      const sw = document.createElement('span');
+      sw.className = 'legend-swatch';
+      sw.style.background = color;
+      const text = document.createElement('span');
+      text.textContent = name;
+      row.appendChild(sw);
+      row.appendChild(text);
+      container.appendChild(row);
+    }
+
+    // === UPLOAD LAYERS ===
+    const MAX_LAYERS = 3;
+    let layerCount = 0;
+    const uploadLayers = []; 
+
+    const uploadLayersContainer = document.getElementById('uploadLayers');
+    const addLayerBtn = document.getElementById('addLayerBtn');
+
+    addLayerBtn.addEventListener('click', () => {
+      if (layerCount >= MAX_LAYERS) { alert('You can add up to 3 layers.'); return; }
+      addUploadLayer();
+      if (layerCount >= MAX_LAYERS) addLayerBtn.disabled = true;
+      updateLegend();
+    });
+
+    function paletteColor(seed) {
+      const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
+      return palette[(seed - 1) % palette.length];
+    }
+
+    function normalizeHex(hex) {
+      if (!hex) return '#000000';
+      return hex.length === 9 ? hex.slice(0, 7) : hex;
+    }
+
+    // Color picker shield
+    let __shield = null;
+    function showInteractionShield() {
+      if (__shield) return;
+      __shield = document.createElement('div');
+      Object.assign(__shield.style, { position:'fixed', inset:'0', zIndex:'10001', cursor:'default' });
+      document.body.appendChild(__shield);
+    }
+    function hideInteractionShield() { if (!__shield) return; __shield.remove(); __shield = null; }
+
+    function addUploadLayer() {
+      const index = ++layerCount;
+      const layerId = `uploaded-layer-${index}`;
+      const circleLayerId = `uploaded-circle-${index}`;
+      const defaultColor = paletteColor(index);
+      const statusId = `status-${layerId}`;
+
+      const card = document.createElement('div');
+      card.className = 'layer-card';
+      card.id = `card-${layerId}`;
+      card.innerHTML = `
+        <div class="layer-header">
+          <div class="layer-meta">
+            <input type="text" id="name-${layerId}" value="Layer ${index}" aria-label="Layer name" class="layer-name-input">
+          </div>
+          <div class="layer-actions">
+            <button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">👁</button>
+            <button class="icon-btn" id="remove-${layerId}" title="Remove layer">✕</button>
+          </div>
+        </div>
+        <div class="layer-body">
+          <div class="layer-row">
+            <div id="picker-${layerId}"></div>
+            <label class="muted">Marker Color</label>
+          </div>
+          <div class="layer-row">
+            <label style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="link-${layerId}"> Use filters
+            </label>
+          </div>
+          <div class="layer-row">
+            <input type="file" id="file-${layerId}" accept=".csv">
+          </div>
+          <div id="${statusId}" class="muted"></div>
+        </div>
+      `;
+      uploadLayersContainer.appendChild(card);
+
+      map.addSource(layerId, { type:'geojson', data: emptyFC() });
+      map.addLayer({
+        id: circleLayerId,
+        type: 'circle',
+        source: layerId,
+        paint: { 'circle-radius': 6, 'circle-color': defaultColor }
+      });
+
+      // Setup Pickr color picker
+      const pickr = Pickr.create({
+        el: `#picker-${layerId}`,
+        theme: 'classic',
+        default: defaultColor,
+        container: document.body,
+        components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true, save: true, cancel: true } }
+      });
+
+      let visible = true;
+      const layerRecord = {
+        id: layerId,
+        sourceId: layerId,
+        circleLayerId,
+        nameInputId: `name-${layerId}`,
+        pickr,
+        get visible() { return visible; },
+        filterActive: false,
+        originalFC: emptyFC(),
+        currentFC: emptyFC()
+      };
+      uploadLayers.push(layerRecord);
+
+      function applyColorToLayer(hex) {
+        const normalized = normalizeHex(hex);
+        const chip = document.querySelector(`#picker-${layerId} .pcr-button`);
+        if (chip) chip.style.background = normalized;
+        const root = pickr.getRoot && pickr.getRoot();
+        if (root && root.button) root.button.style.background = normalized;
+        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
+        const src = map.getSource(layerId);
+        if (src && layerRecord.currentFC && layerRecord.currentFC.features) {
+          layerRecord.currentFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
+          src.setData(layerRecord.currentFC);
+        }
+        if (layerRecord.originalFC && layerRecord.originalFC.features) {
+          layerRecord.originalFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
+          if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+        }
+        updateLegend();
+      }
+
+      pickr.on('init', () => {
+        const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
+        applyColorToLayer(hex);
+      });
+      pickr.on('change', (c) => { applyColorToLayer(c.toHEXA().toString()); });
+      pickr.on('swatchselect', (c) => { applyColorToLayer(c.toHEXA().toString()); });
+      pickr.on('save', () => { pickr.hide(); });
+
+      const mapCanvas = map.getCanvas();
+      function restoreAfterPickr() {
+        hideInteractionShield();
+        map.dragPan.enable(); map.scrollZoom.enable(); map.boxZoom.enable();
+        map.dragRotate.enable(); map.keyboard.enable(); map.doubleClickZoom.enable();
+        mapCanvas.style.pointerEvents = '';
+      }
+      pickr.on('show', () => {
+        showInteractionShield();
+        map.dragPan.disable(); map.scrollZoom.disable(); map.boxZoom.disable();
+        map.dragRotate.disable(); map.keyboard.disable(); map.doubleClickZoom.disable();
+        mapCanvas.style.pointerEvents = '';
+      });
+      pickr.on('cancel', restoreAfterPickr);
+      pickr.on('hide', restoreAfterPickr);
+
+      // Toggle button
+      const toggleBtn = document.getElementById(`toggle-${layerId}`);
+      toggleBtn.innerHTML = ICON_EYE;
+      toggleBtn.setAttribute('aria-pressed', 'true');
+      toggleBtn.addEventListener('click', () => {
+        visible = !visible;
+        map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
+        toggleBtn.innerHTML = visible ? ICON_EYE : ICON_EYE_OFF;
+        toggleBtn.setAttribute('aria-pressed', String(visible));
+        toggleBtn.title = visible ? 'Hide markers' : 'Show markers';
+        updateLegend();
+      });
+
+      // Remove button
+      document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
+        card.remove();
+        if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
+        if (map.getSource(layerId)) map.removeSource(layerId);
+        const idx = uploadLayers.findIndex(l => l.id === layerId);
+        if (idx >= 0) uploadLayers.splice(idx, 1);
+        layerCount--; addLayerBtn.disabled = false; updateLegend();
+      });
+
+      // Name input
+      document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
+
+      // Filter checkbox
+      const linkChk = document.getElementById(`link-${layerId}`);
+      linkChk.addEventListener('change', () => {
+        layerRecord.filterActive = linkChk.checked;
+        if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+        else {
+          const src = map.getSource(layerId);
+          if (src && layerRecord.originalFC) {
+            src.setData(layerRecord.originalFC);
+            layerRecord.currentFC = layerRecord.originalFC;
+          }
+        }
+      });
+
+      // File input
+      const fileInput = document.getElementById(`file-${layerId}`);
+      const perLayerStatus = document.getElementById(statusId);
+      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerRecord, perLayerStatus));
+
+      updateLegend();
+    }
+    // === HANDLE CSV UPLOAD ===
+    function handleCSVUpload(event, layerRecord, statusEl) {
+      const input = event.target;
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      statusEl.textContent = "Uploading…";
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: 'greedy',
+        worker: true,
+        complete: async (results) => {
+          try {
+            const features = [];
+            const color = normalizeHex(layerRecord.pickr.getColor().toHEXA().toString());
+
+            for (const row of results.data) {
+              let lat = parseFloat(row.Latitude);
+              let lng = parseFloat(row.Longitude);
+
+              if ((!isFinite(lat) || !isFinite(lng)) && row.ADDRESS) {
+                try {
+                  const response = await fetch(
+                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+                  );
+                  const data = await response.json();
+                  if (data.status === "OK") {
+                    lat = data.results[0].geometry.location.lat;
+                    lng = data.results[0].geometry.location.lng;
+                  }
+                } catch (e) {
+                  console.warn("Geocoding failed:", row.ADDRESS, e);
+                }
+              }
+
+              if (isFinite(lat) && isFinite(lng)) {
+                features.push({
+                  type: "Feature",
+                  geometry: { type: "Point", coordinates: [lng, lat] },
+                  properties: {
+                    officeName: row["LABEL"] || row["Label"] || "",
+                    address: row.ADDRESS || "",
+                    state: row["STATE / PROVINCE"] || "",
+                    bu: row["BU"] || row["Business Unit"] || "",
+                    color
+                  }
+                });
+              }
+            }
+
+            const name = (document.getElementById(layerRecord.nameInputId)?.value || 'Layer').trim();
+            statusEl.textContent = features.length > 0
+              ? `✅ ${features.length} locations added to ${name}.`
+              : "⚠️ No valid locations found in the file.";
+
+            const uploadedGeojson = { type:"FeatureCollection", features };
+            const src = map.getSource(layerRecord.id);
+            if (src) {
+              src.setData(uploadedGeojson);
+              layerRecord.originalFC = uploadedGeojson;
+              layerRecord.currentFC = uploadedGeojson;
+            }
+
+            wireUploadLayerPopups(layerRecord.id);
+            if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
+
+            updateLegend();
+          } catch (err) {
+            console.error(err);
+            statusEl.textContent = "❌ Upload failed.";
+          } finally {
+            input.value = "";
+          }
+        },
+        error: (err) => {
+          console.error(err);
+          statusEl.textContent = "❌ Upload failed: " + err.message;
+        }
+      });
+    }
+
+    function wireUploadLayerPopups(layerId) {
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
+      const circleId = `uploaded-circle-${layerId.split('-').pop()}`;
+      map.on('mouseenter', circleId, (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const p = e.features[0].properties || {};
+        const label   = p.officeName || '(No LABEL)';
+        const address = p.address || '';
+        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
+          `<span style="font-weight:bold; color:${p.color || '#009DE0'};">${label}</span><br>${address}`
+        ).addTo(map);
+      });
+      map.on('mouseleave', circleId, () => {
+        map.getCanvas().style.cursor = '';
+        popup.remove();
+      });
+    }
+
+    // === EXPORT MAP TO PNG ===
+    document.getElementById('exportMap').addEventListener('click', () => {
+      const panel = document.getElementById('panel');
+      const controls = document.querySelectorAll('.maplibregl-ctrl');
+
+      const prevPanelVis = panel.style.visibility;
+      panel.style.visibility = 'hidden';
+      const prevCtrlVis = [];
+      controls.forEach((c, i) => { prevCtrlVis[i] = c.style.visibility; c.style.visibility = 'hidden'; });
+
+      const TARGET_AR = 21.278 / 12.889;
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
+
+      const frame = document.createElement('div');
+      Object.assign(frame.style, {
+        position: 'absolute',
+        top: '50%', left: '50%',
+        width: '80%',
+        aspectRatio: String(TARGET_AR),
+        transform: 'translate(-50%, -50%)',
+        outline: '2px dashed #666',
+        outlineOffset: '0',
+        pointerEvents: 'none',
+        boxSizing: 'border-box'
+      });
+      overlay.appendChild(frame);
+
+      const hint = document.createElement('div');
+      hint.textContent = 'Pan and zoom the map, then confirm.';
+      Object.assign(hint.style, {
+        position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
+        fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
+        padding: '6px 12px', borderRadius: '4px', pointerEvents: 'none'
+      });
+      overlay.appendChild(hint);
+
+      const controlsWrap = document.createElement('div');
+      Object.assign(controlsWrap.style, {
+        position: 'absolute', bottom: '20px', right: '20px',
+        display: 'flex', gap: '12px', alignItems: 'center',
+        pointerEvents: 'auto'
+      });
+
+      const sizeLabel = document.createElement('span');
+      sizeLabel.textContent = 'Frame size';
+      sizeLabel.style.color = '#fff';
+      sizeLabel.style.fontSize = '13px';
+
+      const sizeSlider = document.createElement('input');
+      sizeSlider.type = 'range';
+      sizeSlider.min = '30';
+      sizeSlider.max = '95';
+      sizeSlider.value = '80';
+      sizeSlider.step = '1';
+      sizeSlider.style.width = '160px';
+      sizeSlider.oninput = () => { frame.style.width = sizeSlider.value + '%'; };
+
+      function makeBtn(txt){ const b=document.createElement('button'); b.textContent=txt; b.className='so-btn'; b.style.width='auto'; return b; }
+      const confirmBtn = makeBtn('Confirm Export');
+      const cancelBtn  = makeBtn('Cancel');
+
+      controlsWrap.appendChild(sizeLabel);
+      controlsWrap.appendChild(sizeSlider);
+      controlsWrap.appendChild(confirmBtn);
+      controlsWrap.appendChild(cancelBtn);
+      overlay.appendChild(controlsWrap);
+      document.body.appendChild(overlay);
+
+      let exporting = false;
+
+      async function waitForMapQuiet(timeoutMs = 1200) {
+        if (map.isMoving()) {
+          await Promise.race([
+            new Promise(res => map.once('moveend', res)),
+            new Promise(res => setTimeout(res, timeoutMs))
+          ]);
+        }
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await Promise.race([
+          new Promise(res => map.once('idle', res)),
+          new Promise(res => setTimeout(res, 300))
+        ]);
+      }
+
+      confirmBtn.onclick = async () => {
+        if (exporting) return;
+        exporting = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Exporting…';
+
+        try {
+          await waitForMapQuiet();
+
+          const mapCanvas = map.getCanvas();
+          const mapRect   = mapCanvas.getBoundingClientRect();
+          const boxRect   = frame.getBoundingClientRect();
+
+          const cx = mapCanvas.width  / mapRect.width;
+          const cy = mapCanvas.height / mapRect.height;
+
+          let sx = (boxRect.left - mapRect.left) * cx;
+          let sy = (boxRect.top  - mapRect.top ) * cy;
+          let sw = boxRect.width  * cx;
+          let sh = boxRect.height * cy;
+
+          sx = Math.max(0, Math.floor(sx));
+          sy = Math.max(0, Math.floor(sy));
+          const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
+          const ey = Math.min(mapCanvas.height, Math.ceil(sy + sh));
+          sw = Math.max(1, ex - sx);
+          sh = Math.max(1, ey - sy);
+
+          const exportCanvas = document.createElement('canvas');
+          exportCanvas.width = sw;
+          exportCanvas.height = sh;
+          const ctx = exportCanvas.getContext('2d', { alpha: false });
+          ctx.imageSmoothingEnabled = false;
+
+          ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+          // Legend capture
+          const legendEl = document.getElementById('legend');
+          if (legendEl && legendEl.style.display !== 'none') {
+            const scaleLegend = mapCanvas.width / mapRect.width;
+            const lr = legendEl.getBoundingClientRect();
+
+            const legendCanvas = await html2canvas(legendEl, {
+              backgroundColor: null,
+              scale: scaleLegend,
+              useCORS: true,
+              removeContainer: true,
+              logging: false
+            });
+
+            const legendW = Math.round(lr.width * scaleLegend);
+            const legendH = Math.round(lr.height * scaleLegend);
+
+            let lmx = Math.round((sw - legendW) / 2);
+            const desiredBottom = Math.round(30 * scaleLegend);
+            let lmy = Math.max(0, sh - desiredBottom - legendH);
+
+            lmx = Math.max(0, Math.min(lmx, sw - legendW));
+            lmy = Math.max(0, Math.min(lmy, sh - legendH));
+
+            const prevSmooth = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(legendCanvas, lmx, lmy);
+            ctx.imageSmoothingEnabled = prevSmooth;
+          }
+
+          const url = exportCanvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'map export.png';
+          a.click();
+
+          cleanup();
+        } catch (err) {
+          console.error(err);
+          alert('Export failed. Please try again.');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm Export';
+          exporting = false;
+        }
+      };
+
+      cancelBtn.onclick = () => cleanup();
+
+      function cleanup() {
+        document.body.removeChild(overlay);
+        panel.style.visibility = prevPanelVis || '';
+        controls.forEach((c, i) => c.style.visibility = prevCtrlVis[i] || '');
+        exporting = false;
+      }
+    });
+    // === REVERT TO BASE MAP ===
+    document.getElementById('revertMap').addEventListener('click', () => {
+      for (const l of [...uploadLayers]) {
+        if (map.getLayer(l.circleLayerId)) map.removeLayer(l.circleLayerId);
+        if (map.getSource(l.id)) map.removeSource(l.id);
+        const card = document.getElementById(`card-${l.id}`);
+        if (card) card.remove();
+      }
+      uploadLayers.length = 0;
+      layerCount = 0;
+
+      const regionSelect = document.getElementById('regionFilter');
+      const buSelect = document.getElementById('buFilter');
+      regionSelect.selectedIndex = -1;
+      buSelect.selectedIndex = -1;
+
+      loadOffices();
+
+      if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos();
+      else setHaloData('halo-offices', emptyFC());
+
+      updateLegend();
+    });
+
+    // === TEMPLATE CSV DOWNLOAD ===
+    document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "MapAddressTemplate.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err) {
+        console.error("Failed to download template:", err);
+      }
+    });
+
+    // === LEGEND AUTO-REFRESH OBSERVER ===
+    const legendObserver = new MutationObserver(() => updateLegend());
+    legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
+
   </script>
 </body>
 </html>
