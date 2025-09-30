@@ -329,6 +329,17 @@
       })
     });
 
+    // Fix Canvas2D performance warning
+    map.once('rendercomplete', function() {
+      const canvases = document.querySelectorAll('#map canvas');
+      canvases.forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.getContext('2d', { willReadFrequently: true });
+        }
+      });
+    });
+
     // State
     let originalGeojson = null;
     let reachEnabled = false;
