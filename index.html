@@ -167,11 +167,14 @@
     ol.proj.proj4.register(proj4);
     const lccProjection = ol.proj.get("EPSG:102009");
 
-    const baseLayer = new ol.layer.Vector({
-      source: new ol.source.Vector({
-        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
-        format: new ol.format.GeoJSON()
-      }),
+   const baseLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
+    format: new ol.format.GeoJSON({
+      dataProjection: 'EPSG:4326',
+      featureProjection: lccProjection
+    })
+  }),
       style: new ol.style.Style({
         stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
         fill: new ol.style.Fill({ color: "#EDEDED" })
@@ -186,10 +189,13 @@
     });
 
     const officeLayer = new ol.layer.Vector({
-      source: new ol.source.Vector({
-        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson",
-        format: new ol.format.GeoJSON()
-      }),
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson",
+    format: new ol.format.GeoJSON({
+      dataProjection: 'EPSG:4326',
+      featureProjection: lccProjection
+    })
+  }),
       style: new ol.style.Style({
         image: new ol.style.Circle({
           radius: 6,
