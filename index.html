@@ -200,6 +200,22 @@
       </div>
       <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
     </div>
+	
+<div class="panel-section">
+  <div class="section-title">Other Countries</div>
+  <div class="segmented">
+    <button id="countriesOff" class="active">Hide Countries</button>
+    <button id="countriesOn">Show Countries</button>
+  </div>
+  <div id="countrySelectContainer" style="display:none; margin-top:10px;">
+    <label class="subhead">(Ctrl/Cmd + click for multiple)</label>
+    <select id="countryFilter" multiple size="8"></select>
+    <div style="margin-top:8px;">
+      <button class="so-btn" id="clearCountries">Clear Selection</button>
+    </div>
+  </div>
+  <div class="muted" style="margin-top:6px;">Show additional countries beyond US and Canada.</div>
+</div>
 
     <div class="panel-section">
       <div class="section-title">Filters</div>
@@ -287,17 +303,21 @@
     const lccProjection = ol.proj.get("EPSG:102009");
 
     // Layers
-    const baseLayer = new ol.layer.Vector({
-      source: new ol.source.Vector({
-        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
-        format: new ol.format.GeoJSON()
-      }),
-      style: new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: "#EDEDED" })
-      })
+let baseGeoJSON = null;
+const baseLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
+    format: new ol.format.GeoJSON()
+  }),
+  style: function(feature) {
+    const name = feature.get('NAME') || feature.get('name') || '';
+    const isUSorCanada = name === 'United States of America' || name === 'Canada';
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+      fill: new ol.style.Fill({ color: isUSorCanada ? "#EDEDED" : "transparent" })
     });
-
+  }
+});
     const haloLayer = new ol.layer.Vector({
       source: new ol.source.Vector(),
       style: new ol.style.Style({
@@ -343,6 +363,8 @@
     // State
     let originalGeojson = null;
     let reachEnabled = false;
+	let showOtherCountries = false;
+let selectedCountries = new Set();
     let layerCount = 0;
     const MAX_LAYERS = 3;
     const uploadLayers = [];
@@ -476,6 +498,66 @@
 
     document.getElementById('reachOn').addEventListener('click', () => setReach(true));
     document.getElementById('reachOff').addEventListener('click', () => setReach(false));
+	
+	// Country filtering
+function buildCountryFilter(gj) {
+  const countrySelect = document.getElementById('countryFilter');
+  const countries = [...new Set(gj.features.map(f => f.properties.NAME || f.properties.name).filter(Boolean))]
+    .filter(name => name !== 'United States of America' && name !== 'Canada')
+    .sort();
+
+  countries.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c;
+    o.textContent = c;
+    countrySelect.appendChild(o);
+  });
+
+  countrySelect.addEventListener('change', applyCountryFilter);
+}
+
+function applyCountryFilter() {
+  const countrySelect = document.getElementById('countryFilter');
+  selectedCountries = new Set(Array.from(countrySelect.selectedOptions).map(o => o.value));
+  updateBaseLayerStyle();
+}
+
+function updateBaseLayerStyle() {
+  baseLayer.setStyle(function(feature) {
+    const name = feature.get('NAME') || feature.get('name') || '';
+    const isUSorCanada = name === 'United States of America' || name === 'Canada';
+    const isSelected = selectedCountries.has(name);
+    const shouldShow = isUSorCanada || (showOtherCountries && isSelected);
+    
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+      fill: new ol.style.Fill({ color: shouldShow ? "#EDEDED" : "transparent" })
+    });
+  });
+}
+
+function setShowOtherCountries(enabled) {
+  showOtherCountries = enabled;
+  document.getElementById('countriesOn').classList.toggle('active', enabled);
+  document.getElementById('countriesOff').classList.toggle('active', !enabled);
+  document.getElementById('countrySelectContainer').style.display = enabled ? 'block' : 'none';
+  
+  if (!enabled) {
+    selectedCountries.clear();
+    document.getElementById('countryFilter').selectedIndex = -1;
+  }
+  
+  updateBaseLayerStyle();
+}
+
+document.getElementById('countriesOn').addEventListener('click', () => setShowOtherCountries(true));
+document.getElementById('countriesOff').addEventListener('click', () => setShowOtherCountries(false));
+
+document.getElementById('clearCountries').addEventListener('click', () => {
+  selectedCountries.clear();
+  document.getElementById('countryFilter').selectedIndex = -1;
+  updateBaseLayerStyle();
+});
 
     // Office visibility toggle
     function updateOfficesToggleIcon(show) {
@@ -501,6 +583,18 @@
 
     // Initialize
     setOfficesVisibility(true);
+	
+	// Load base layer and build country list
+baseLayer.getSource().once('change', function() {
+  if (baseLayer.getSource().getState() === 'ready') {
+    const format = new ol.format.GeoJSON();
+    baseGeoJSON = format.writeFeaturesObject(baseLayer.getSource().getFeatures(), {
+      featureProjection: lccProjection,
+      dataProjection: 'EPSG:4326'
+    });
+    buildCountryFilter(baseGeoJSON);
+  }
+});
 
     // Load offices data
     officeLayer.getSource().once('change', function() {
@@ -897,6 +991,9 @@
 
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
+	  
+	  // Reset country filter
+setShowOtherCountries(false);
 
       if (originalGeojson) {
         const format = new ol.format.GeoJSON();
