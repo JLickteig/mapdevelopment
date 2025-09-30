@@ -347,6 +347,8 @@
     const MAX_LAYERS = 3;
     const uploadLayers = [];
     const isoCache = new Map();
+    let allCountries = [];
+    let visibleCountries = new Set(['United States', 'Canada']); // Default visible countries
 
     // Popup
     const popupEl = document.getElementById('popup');
@@ -511,8 +513,79 @@
           dataProjection: 'EPSG:4326'
         });
         buildFilters(originalGeojson);
+        buildCountryFilter();
+        applyCountryFilter(); // Apply default country filter
         updateLegend();
       }
+    });
+
+    // Country filter logic
+    function buildCountryFilter() {
+      // Get unique countries from base layer
+      fetch("https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson")
+        .then(res => res.json())
+        .then(data => {
+          const countries = [...new Set(data.features
+            .map(f => f.properties.ADMIN || f.properties.NAME || f.properties.name)
+            .filter(Boolean)
+          )].sort();
+          
+          allCountries = countries;
+          
+          const countrySelect = document.getElementById('countryFilter');
+          countrySelect.innerHTML = '';
+          
+          countries.forEach(country => {
+            if (country !== 'United States' && country !== 'Canada') {
+              const option = document.createElement('option');
+              option.value = country;
+              option.textContent = country;
+              countrySelect.appendChild(option);
+            }
+          });
+        })
+        .catch(err => console.error('Error loading countries:', err));
+    }
+
+    function applyCountryFilter() {
+      const features = baseLayer.getSource().getFeatures();
+      features.forEach(feature => {
+        const countryName = feature.get('ADMIN') || feature.get('NAME') || feature.get('name');
+        if (visibleCountries.has(countryName)) {
+          feature.setStyle(null); // Use default style
+        } else {
+          feature.setStyle(new ol.style.Style({})); // Hide by making invisible
+        }
+      });
+    }
+
+    // Country visibility toggle
+    const showOtherCountriesCheckbox = document.getElementById('showOtherCountries');
+    const countrySelectContainer = document.getElementById('countrySelectContainer');
+    const countrySelect = document.getElementById('countryFilter');
+
+    showOtherCountriesCheckbox.addEventListener('change', () => {
+      if (showOtherCountriesCheckbox.checked) {
+        countrySelectContainer.style.display = 'block';
+      } else {
+        countrySelectContainer.style.display = 'none';
+        // Reset to default when unchecked
+        visibleCountries = new Set(['United States', 'Canada']);
+        countrySelect.selectedIndex = -1;
+        applyCountryFilter();
+      }
+    });
+
+    countrySelect.addEventListener('change', () => {
+      const selectedCountries = Array.from(countrySelect.selectedOptions).map(o => o.value);
+      visibleCountries = new Set(['United States', 'Canada', ...selectedCountries]);
+      applyCountryFilter();
+    });
+
+    document.getElementById('clearCountries').addEventListener('click', () => {
+      countrySelect.selectedIndex = -1;
+      visibleCountries = new Set(['United States', 'Canada']);
+      applyCountryFilter();
     });
 
     // Filters
@@ -897,6 +970,13 @@
 
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
+
+      // Reset country visibility
+      document.getElementById('showOtherCountries').checked = false;
+      document.getElementById('countrySelectContainer').style.display = 'none';
+      document.getElementById('countryFilter').selectedIndex = -1;
+      visibleCountries = new Set(['United States', 'Canada']);
+      applyCountryFilter();
 
       if (originalGeojson) {
         const format = new ol.format.GeoJSON();
