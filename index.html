@@ -919,56 +919,177 @@
 
     // Export map
     document.getElementById('exportMap').addEventListener('click', () => {
-      map.once('rendercomplete', function() {
-        const mapCanvas = document.createElement('canvas');
-        const size = map.getSize();
-        mapCanvas.width = size[0];
-        mapCanvas.height = size[1];
-        const mapContext = mapCanvas.getContext('2d');
-        
-        Array.prototype.forEach.call(
-          map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer'),
-          function(canvas) {
-            if (canvas.width > 0) {
-              const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
-              mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
-              
-              let matrix;
-              const transform = canvas.style.transform;
-              if (transform) {
-                matrix = transform.match(/^matrix\(([^\(]*)\)$/)[1].split(',').map(Number);
-              } else {
-                matrix = [
-                  parseFloat(canvas.style.width) / canvas.width,
-                  0,
-                  0,
-                  parseFloat(canvas.style.height) / canvas.height,
-                  0,
-                  0
-                ];
-              }
-              CanvasRenderingContext2D.prototype.setTransform.apply(
-                mapContext,
-                matrix
-              );
-              const backgroundColor = canvas.parentNode.style.backgroundColor;
-              if (backgroundColor) {
-                mapContext.fillStyle = backgroundColor;
-                mapContext.fillRect(0, 0, canvas.width, canvas.height);
-              }
-              mapContext.drawImage(canvas, 0, 0);
-            }
-          }
-        );
-        mapContext.globalAlpha = 1;
-        mapContext.setTransform(1, 0, 0, 1, 0, 0);
-        
-        const link = document.createElement('a');
-        link.download = 'map-export.png';
-        link.href = mapCanvas.toDataURL();
-        link.click();
+      const panel = document.getElementById('panel');
+      
+      const prevPanelVis = panel.style.visibility;
+      panel.style.visibility = 'hidden';
+
+      const TARGET_AR = 21.278 / 12.889;
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
+
+      const frame = document.createElement('div');
+      Object.assign(frame.style, {
+        position: 'absolute',
+        top: '50%', left: '50%',
+        width: '80%',
+        aspectRatio: String(TARGET_AR),
+        transform: 'translate(-50%, -50%)',
+        outline: '2px dashed #666',
+        outlineOffset: '0',
+        pointerEvents: 'none',
+        boxSizing: 'border-box'
       });
-      map.renderSync();
+      overlay.appendChild(frame);
+
+      const hint = document.createElement('div');
+      hint.textContent = 'Pan and zoom the map, then confirm.';
+      Object.assign(hint.style, {
+        position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
+        fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
+        padding: '6px 12px', borderRadius: '4px', pointerEvents: 'none'
+      });
+      overlay.appendChild(hint);
+
+      const controlsWrap = document.createElement('div');
+      Object.assign(controlsWrap.style, {
+        position: 'absolute', bottom: '20px', right: '20px',
+        display: 'flex', gap: '12px', alignItems: 'center',
+        pointerEvents: 'auto'
+      });
+
+      const sizeLabel = document.createElement('span');
+      sizeLabel.textContent = 'Frame size';
+      sizeLabel.style.color = '#fff';
+      sizeLabel.style.fontSize = '13px';
+
+      const sizeSlider = document.createElement('input');
+      sizeSlider.type = 'range';
+      sizeSlider.min = '30';
+      sizeSlider.max = '95';
+      sizeSlider.value = '80';
+      sizeSlider.step = '1';
+      sizeSlider.style.width = '160px';
+      sizeSlider.oninput = () => { frame.style.width = sizeSlider.value + '%'; };
+
+      function makeBtn(txt) {
+        const b = document.createElement('button');
+        b.textContent = txt;
+        b.className = 'so-btn';
+        b.style.width = 'auto';
+        return b;
+      }
+      const confirmBtn = makeBtn('Confirm Export');
+      const cancelBtn = makeBtn('Cancel');
+
+      controlsWrap.appendChild(sizeLabel);
+      controlsWrap.appendChild(sizeSlider);
+      controlsWrap.appendChild(confirmBtn);
+      controlsWrap.appendChild(cancelBtn);
+      overlay.appendChild(controlsWrap);
+      document.body.appendChild(overlay);
+
+      let exporting = false;
+
+      confirmBtn.onclick = async () => {
+        if (exporting) return;
+        exporting = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Exporting…';
+
+        try {
+          // Wait a moment for rendering
+          await new Promise(r => setTimeout(r, 100));
+
+          // Get the map canvas
+          const mapContainer = document.getElementById('map');
+          const canvases = mapContainer.querySelectorAll('canvas');
+          
+          if (!canvases.length) {
+            throw new Error('No canvas found');
+          }
+
+          // Create composite canvas from all OpenLayers canvases
+          const tempCanvas = document.createElement('canvas');
+          const mapRect = mapContainer.getBoundingClientRect();
+          const boxRect = frame.getBoundingClientRect();
+
+          // Calculate crop area
+          const scaleX = canvases[0].width / mapRect.width;
+          const scaleY = canvases[0].height / mapRect.height;
+
+          let sx = (boxRect.left - mapRect.left) * scaleX;
+          let sy = (boxRect.top - mapRect.top) * scaleY;
+          let sw = boxRect.width * scaleX;
+          let sh = boxRect.height * scaleY;
+
+          sx = Math.max(0, Math.floor(sx));
+          sy = Math.max(0, Math.floor(sy));
+          const ex = Math.min(canvases[0].width, Math.ceil(sx + sw));
+          const ey = Math.min(canvases[0].height, Math.ceil(sy + sh));
+          sw = Math.max(1, ex - sx);
+          sh = Math.max(1, ey - sy);
+
+          tempCanvas.width = sw;
+          tempCanvas.height = sh;
+          const ctx = tempCanvas.getContext('2d');
+
+          // Draw all canvases onto temp canvas
+          canvases.forEach(canvas => {
+            if (canvas.width > 0) {
+              ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+            }
+          });
+
+          // Add legend if visible
+          const legendEl = document.getElementById('legend');
+          if (legendEl && legendEl.style.display !== 'none') {
+            const legendCanvas = await html2canvas(legendEl, {
+              backgroundColor: null,
+              scale: scaleX,
+              useCORS: true,
+              logging: false
+            });
+
+            const lr = legendEl.getBoundingClientRect();
+            const legendW = Math.round(lr.width * scaleX);
+            const legendH = Math.round(lr.height * scaleX);
+
+            let lmx = Math.round((sw - legendW) / 2);
+            const desiredBottom = Math.round(30 * scaleX);
+            let lmy = Math.max(0, sh - desiredBottom - legendH);
+
+            lmx = Math.max(0, Math.min(lmx, sw - legendW));
+            lmy = Math.max(0, Math.min(lmy, sh - legendH));
+
+            ctx.drawImage(legendCanvas, lmx, lmy);
+          }
+
+          // Download
+          const url = tempCanvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'map export.png';
+          a.click();
+
+          cleanup();
+        } catch (err) {
+          console.error(err);
+          alert('Export failed. Please try again.');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm Export';
+          exporting = false;
+        }
+      };
+
+      cancelBtn.onclick = () => cleanup();
+
+      function cleanup() {
+        document.body.removeChild(overlay);
+        panel.style.visibility = prevPanelVis || '';
+        exporting = false;
+      }
     });
   </script>
 </body>
