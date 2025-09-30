@@ -4,14 +4,27 @@
   <meta charset="utf-8" />
   <title>Salas O'Brien Offices Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- OpenLayers -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css" />
   <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+
+  <!-- Proj4 for Lambert Conformal Conic -->
   <script src="https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js"></script>
+
+  <!-- html2canvas for export -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- Pickr (Color Picker) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+
+  <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+
   <style>
     :root {
       --brand: #009de0;
@@ -22,47 +35,159 @@
       --shadow: 0 4px 12px rgba(0,0,0,0.08);
       --radius: 14px;
     }
+
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; }
-    #panel { position: absolute; top: 14px; left: 14px; width: 320px; max-height: calc(100vh - 28px); overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; z-index: 5; }
-    .panel-section { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; background: #fff; }
-    .section-title { font-weight: 600; font-size: 14px; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px; }
+
+    #map {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #panel {
+      position: absolute;
+      top: 14px; left: 14px;
+      width: 320px;
+      max-height: calc(100vh - 28px);
+      overflow: auto;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      z-index: 5;
+    }
+    .panel-section {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .section-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .hr { height: 1px; background: var(--line); margin: 12px 0; }
-    .segmented { display: inline-flex; border: 1.5px solid var(--brand); border-radius: 999px; overflow: hidden; user-select: none; }
-    .segmented button { padding: 8px 12px; font-size: 13px; border: none; background: #fff; color: var(--brand); cursor: pointer; }
+
+    .segmented {
+      display: inline-flex;
+      border: 1.5px solid var(--brand);
+      border-radius: 999px;
+      overflow: hidden;
+      user-select: none;
+    }
+    .segmented button {
+      padding: 8px 12px;
+      font-size: 13px;
+      border: none;
+      background: #fff;
+      color: var(--brand);
+      cursor: pointer;
+    }
     .segmented button.active { background: var(--brand); color: #fff; }
-    .so-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 14px; font-size: 14px; color: #000; background: #fff; border: 2px solid var(--brand); border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; }
+
+    .so-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: #000;
+      background: #fff;
+      border: 2px solid var(--brand);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
     .so-btn:hover { background: var(--brand); color: #fff; }
+
     .accordion { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
-    .accordion-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; cursor: pointer; background: #f8fafc; font-weight: 600; font-size: 14px; }
+    .accordion-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; cursor: pointer; background: #f8fafc;
+      font-weight: 600; font-size: 14px;
+    }
     .chev { width: 12px; height: 12px; background: var(--brand); clip-path: polygon(100% 100%, 100% 0, 0 100%); transition: transform .15s; }
     .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
     .accordion-body { display: none; padding: 10px; }
     .accordion-header[aria-expanded="true"] + .accordion-body { display: block; }
+
     label { font-size: 13px; font-weight: 600; }
     .subhead { color: var(--muted); font-size: 12px; }
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
+
     input[type="file"] { width: 100%; font-size: 13px; }
-    input[type="file"]::file-selector-button { font-size: 12px; font-weight: 600; color: #000; background: #fff; border: 2px solid var(--brand); border-radius: 999px; padding: 6px 12px; margin-right: 10px; cursor: pointer; transition: background .15s, color .15s; }
+    input[type="file"]::file-selector-button {
+      font-size: 12px; font-weight: 600; color: #000; background: #fff;
+      border: 2px solid var(--brand); border-radius: 999px; padding: 6px 12px; margin-right: 10px; cursor: pointer;
+      transition: background .15s, color .15s;
+    }
     input[type="file"]::file-selector-button:hover { background: var(--brand); color: #fff; }
+
     .layer-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; }
     .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
     .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
-    .icon-btn { background:#fff; border:1px solid var(--line); border-radius:8px; width:32px; height:32px; padding:0; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+
+    .icon-btn {
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:8px;
+      width:32px;
+      height:32px;
+      padding:0;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+    }
     .icon-btn:hover{ background:#f3f4f6; }
     .icon-btn svg{ width:18px; height:18px; display:block; fill:currentColor; }
+
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .map-legend { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; background: transparent; border-radius: 10px; padding: 8px 10px; z-index: 4; max-width: min(90%, 900px); }
+
+    .map-legend {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 14px;
+      background: transparent;
+      border-radius: 10px;
+      padding: 8px 10px;
+      z-index: 4;
+      max-width: min(90%, 900px);
+    }
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
     .pcr-app { z-index: 10002; }
-    #popup { position:absolute; background:white; border:1px solid #ccc; padding:6px 10px; font-size:12px; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); pointer-events:none; display:none; z-index:10; }
+
+    #popup {
+      position:absolute;
+      background:white;
+      border:1px solid #ccc;
+      padding:6px 10px;
+      font-size:12px;
+      border-radius:6px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.2);
+      pointer-events:none;
+      display:none;
+      z-index:10;
+    }
   </style>
 </head>
 <body>
@@ -77,25 +202,8 @@
     </div>
 
     <div class="panel-section">
-      <div class="section-title">Country Visibility</div>
-      <div style="margin-bottom:8px;">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:400;">
-          <input type="checkbox" id="showOtherCountries" style="width:auto; min-height:auto;">
-          <span>Show other countries</span>
-        </label>
-      </div>
-      <div id="countrySelectContainer" style="display:none;">
-        <label class="subhead">Select countries to show:</label>
-        <select id="countryFilter" multiple style="min-height:120px;"></select>
-        <div style="margin-top:8px;">
-          <button class="so-btn" id="clearCountries" type="button">Clear Selection</button>
-        </div>
-      </div>
-      <div class="muted" style="margin-top:6px;">By default, only US and Canada are visible.</div>
-    </div>
-
-    <div class="panel-section">
       <div class="section-title">Filters</div>
+
       <div class="accordion">
         <div class="accordion-header" aria-expanded="false">
           <span>State / Province</span>
@@ -109,6 +217,7 @@
           </div>
         </div>
       </div>
+
       <div class="accordion">
         <div class="accordion-header" aria-expanded="false">
           <span>Business Unit</span>
@@ -121,12 +230,14 @@
           </div>
         </div>
       </div>
+
       <div class="hr"></div>
       <button class="so-btn" id="clearFilters">Clear All Filters</button>
     </div>
 
     <div class="panel-section">
       <div class="section-title">Layers</div>
+
       <div class="layer-card">
         <div class="layer-header">
           <div class="layer-meta">
@@ -139,11 +250,16 @@
         </div>
         <div class="muted">This layer is filterable.</div>
       </div>
+
       <div id="uploadLayers"></div>
+
       <button class="so-btn" id="addLayerBtn">+ Add Layer</button>
       <div style="height:8px;"></div>
       <a href="#" id="downloadTemplate" class="muted" style="color:#E35920; font-weight: bold;">Download CSV template</a>
-      <div class="muted" style="margin-top:6px;">Add up to 3 more layers. <br><span style="color:#E35920; font-weight: bold;">NOTE</span> Template use is required.</div>
+      <div class="muted" style="margin-top:6px;">
+        Add up to 3 more layers. <br>
+        <span style="color:#E35920; font-weight: bold;">NOTE</span> Template use is required.
+      </div>
     </div>
 
     <div class="panel-section">
@@ -157,24 +273,25 @@
   <div id="legend" class="map-legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
+
   <script>
+    // ADD YOUR GOOGLE MAPS API KEY HERE (WARNING: This is visible to anyone viewing your page source)
     const GOOGLE_MAPS_KEY = 'AIzaSyBZVs1es2OML0d7tQSw7BF38lUlx8-BW-U';
     
     const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
     const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
 
+    // Projection setup
     proj4.defs("EPSG:102009", "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs");
     ol.proj.proj4.register(proj4);
     const lccProjection = ol.proj.get("EPSG:102009");
 
-   const baseLayer = new ol.layer.Vector({
-  source: new ol.source.Vector({
-    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
-    format: new ol.format.GeoJSON({
-      dataProjection: 'EPSG:4326',
-      featureProjection: lccProjection
-    })
-  }),
+    // Layers
+    const baseLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
+        format: new ol.format.GeoJSON()
+      }),
       style: new ol.style.Style({
         stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
         fill: new ol.style.Fill({ color: "#EDEDED" })
@@ -189,13 +306,10 @@
     });
 
     const officeLayer = new ol.layer.Vector({
-  source: new ol.source.Vector({
-    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson",
-    format: new ol.format.GeoJSON({
-      dataProjection: 'EPSG:4326',
-      featureProjection: lccProjection
-    })
-  }),
+      source: new ol.source.Vector({
+        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson",
+        format: new ol.format.GeoJSON()
+      }),
       style: new ol.style.Style({
         image: new ol.style.Circle({
           radius: 6,
@@ -215,15 +329,26 @@
       })
     });
 
+    // Fix Canvas2D performance warning
+    map.once('rendercomplete', function() {
+      const canvases = document.querySelectorAll('#map canvas');
+      canvases.forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.getContext('2d', { willReadFrequently: true });
+        }
+      });
+    });
+
+    // State
     let originalGeojson = null;
     let reachEnabled = false;
     let layerCount = 0;
     const MAX_LAYERS = 3;
     const uploadLayers = [];
     const isoCache = new Map();
-    let allCountries = [];
-    let visibleCountries = new Set(['United States', 'Canada']);
 
+    // Popup
     const popupEl = document.getElementById('popup');
     map.on('pointermove', function (evt) {
       const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
@@ -234,7 +359,15 @@
         const phone = p["MAIN PHONE"] || '';
         const bu = p.BU || p.bu || '';
         const color = p.color || '#009DE0';
-        popupEl.innerHTML = `<div style="line-height:1.2;"><div style="font-weight:bold; color:${color};">${name}</div><div style="font-size:11px; color:#333;">${address}</div>${phone ? `<div style="font-size:11px; color:#666;">${phone}</div>` : ''}${bu ? `<div style="font-size:11px; color:#666;">${bu}</div>` : ''}</div>`;
+
+        popupEl.innerHTML = `
+          <div style="line-height:1.2;">
+            <div style="font-weight:bold; color:${color};">${name}</div>
+            <div style="font-size:11px; color:#333;">${address}</div>
+            ${phone ? `<div style="font-size:11px; color:#666;">${phone}</div>` : ''}
+            ${bu ? `<div style="font-size:11px; color:#666;">${bu}</div>` : ''}
+          </div>
+        `;
         popupEl.style.left = evt.pixel[0] + 12 + 'px';
         popupEl.style.top = evt.pixel[1] + 12 + 'px';
         popupEl.style.display = 'block';
@@ -245,6 +378,7 @@
       }
     });
 
+    // Accordion
     document.querySelectorAll('.accordion-header').forEach(h => {
       h.addEventListener('click', () => {
         const expanded = h.getAttribute('aria-expanded') === 'true';
@@ -252,7 +386,10 @@
       });
     });
 
-    function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
+    // Helper functions
+    function emptyFC() {
+      return { type: 'FeatureCollection', features: [] };
+    }
 
     async function fetchIsochronePolygon(lng, lat) {
       const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
@@ -276,8 +413,11 @@
       if (!fc?.features?.length) return emptyFC();
       let merged = fc.features[0];
       for (let i = 1; i < fc.features.length; i++) {
-        try { merged = turf.union(merged, fc.features[i]); }
-        catch (e) { console.warn('union failed', e); }
+        try {
+          merged = turf.union(merged, fc.features[i]);
+        } catch (e) {
+          console.warn('union failed', e);
+        }
       }
       return merged ? { type: 'FeatureCollection', features: [merged] } : emptyFC();
     }
@@ -297,6 +437,7 @@
         setHaloData(emptyFC());
         return;
       }
+
       let features;
       if (sourceData) {
         features = sourceData.features;
@@ -308,27 +449,35 @@
         });
         features = gj.features;
       }
+
       const pts = features.filter(f => f.geometry?.type === 'Point');
       if (!pts.length) {
         setHaloData(emptyFC());
         return;
       }
+
       const fc = await buildIsochronesForPoints(pts);
       const dissolved = dissolvePolygons(fc);
       setHaloData(dissolved);
     }
 
+    // Reach toggle
     function setReach(enabled) {
       reachEnabled = enabled;
       document.getElementById('reachOn').classList.toggle('active', enabled);
       document.getElementById('reachOff').classList.toggle('active', !enabled);
-      if (!enabled) { setHaloData(emptyFC()); }
-      else { rebuildOfficeHalos(); }
+
+      if (!enabled) {
+        setHaloData(emptyFC());
+      } else {
+        rebuildOfficeHalos();
+      }
     }
 
     document.getElementById('reachOn').addEventListener('click', () => setReach(true));
     document.getElementById('reachOff').addEventListener('click', () => setReach(false));
 
+    // Office visibility toggle
     function updateOfficesToggleIcon(show) {
       const btn = document.getElementById('toggle-offices');
       btn.innerHTML = show ? ICON_EYE : ICON_EYE_OFF;
@@ -337,8 +486,11 @@
 
     function setOfficesVisibility(show) {
       officeLayer.setVisible(show);
-      if (!show) { setHaloData(emptyFC()); }
-      else if (reachEnabled) { rebuildOfficeHalos(); }
+      if (!show) {
+        setHaloData(emptyFC());
+      } else if (reachEnabled) {
+        rebuildOfficeHalos();
+      }
       updateOfficesToggleIcon(show);
       updateLegend();
     }
@@ -347,14 +499,10 @@
       setOfficesVisibility(!officeLayer.getVisible());
     });
 
+    // Initialize
     setOfficesVisibility(true);
-    // Country Filter
-    baseLayer.getSource().once('change', function() {
-      if (baseLayer.getSource().getState() === 'ready') {
-        applyCountryFilter();
-      }
-    });
 
+    // Load offices data
     officeLayer.getSource().once('change', function() {
       if (officeLayer.getSource().getState() === 'ready') {
         const format = new ol.format.GeoJSON();
@@ -363,77 +511,15 @@
           dataProjection: 'EPSG:4326'
         });
         buildFilters(originalGeojson);
-        buildCountryFilter();
         updateLegend();
       }
     });
 
-    function buildCountryFilter() {
-      fetch("https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson")
-        .then(res => res.json())
-        .then(data => {
-          const countries = [...new Set(data.features
-            .map(f => f.properties.ADMIN || f.properties.NAME || f.properties.name)
-            .filter(Boolean)
-          )].sort();
-          allCountries = countries;
-          const countrySelect = document.getElementById('countryFilter');
-          countrySelect.innerHTML = '';
-          countries.forEach(country => {
-            if (country !== 'United States' && country !== 'Canada') {
-              const option = document.createElement('option');
-              option.value = country;
-              option.textContent = country;
-              countrySelect.appendChild(option);
-            }
-          });
-        })
-        .catch(err => console.error('Error loading countries:', err));
-    }
-
-    function applyCountryFilter() {
-      const features = baseLayer.getSource().getFeatures();
-      features.forEach(feature => {
-        const countryName = feature.get('ADMIN') || feature.get('NAME') || feature.get('name');
-        if (visibleCountries.has(countryName)) {
-          feature.setStyle(null);
-        } else {
-          feature.setStyle(new ol.style.Style({}));
-        }
-      });
-    }
-
-    const showOtherCountriesCheckbox = document.getElementById('showOtherCountries');
-    const countrySelectContainer = document.getElementById('countrySelectContainer');
-    const countrySelect = document.getElementById('countryFilter');
-
-    showOtherCountriesCheckbox.addEventListener('change', () => {
-      if (showOtherCountriesCheckbox.checked) {
-        countrySelectContainer.style.display = 'block';
-      } else {
-        countrySelectContainer.style.display = 'none';
-        visibleCountries = new Set(['United States', 'Canada']);
-        countrySelect.selectedIndex = -1;
-        applyCountryFilter();
-      }
-    });
-
-    countrySelect.addEventListener('change', () => {
-      const selectedCountries = Array.from(countrySelect.selectedOptions).map(o => o.value);
-      visibleCountries = new Set(['United States', 'Canada', ...selectedCountries]);
-      applyCountryFilter();
-    });
-
-    document.getElementById('clearCountries').addEventListener('click', () => {
-      countrySelect.selectedIndex = -1;
-      visibleCountries = new Set(['United States', 'Canada']);
-      applyCountryFilter();
-    });
-
-    // Office Filters
+    // Filters
     function buildFilters(gj) {
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
+
       const states = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'US').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const provinces = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'CAN').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.BU).filter(Boolean))].sort();
@@ -458,6 +544,7 @@
 
       regionSelect.appendChild(caGroup);
       regionSelect.appendChild(usGroup);
+
       bus.forEach(b => {
         const o = document.createElement('option');
         o.value = b;
@@ -473,6 +560,7 @@
         const regionsRaw = getSelected(regionSelect);
         const regions = regionsRaw.map(v => v.split('|')[1]);
         const busSel = getSelected(buSelect);
+
         const filtered = {
           type: 'FeatureCollection',
           features: originalGeojson.features.filter(f => {
@@ -486,6 +574,7 @@
             return ok;
           })
         };
+
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(filtered, {
           featureProjection: lccProjection,
@@ -493,6 +582,7 @@
         });
         officeLayer.getSource().clear();
         officeLayer.getSource().addFeatures(features);
+
         if (reachEnabled && officeLayer.getVisible()) await rebuildOfficeHalos(filtered);
       }
 
@@ -520,21 +610,27 @@
       regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
     }
+
     // Legend
     function updateLegend() {
       const legendEl = document.getElementById('legend');
       const itemsEl = document.getElementById('legendItems');
+
       const anyUserLayers = uploadLayers.some(l => l.visible);
+
       if (!anyUserLayers && !officeLayer.getVisible()) {
         legendEl.style.display = 'none';
         itemsEl.innerHTML = '';
         return;
       }
+
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
+
       if (officeLayer.getVisible()) {
         addLegendItem(itemsEl, '#009DE0', "Salas O'Brien Offices");
       }
+
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
@@ -556,7 +652,7 @@
       container.appendChild(row);
     }
 
-    // Upload Layers
+    // Upload layers
     function paletteColor(seed) {
       const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
       return palette[(seed - 1) % palette.length];
@@ -576,10 +672,31 @@
       const layerId = `uploaded-layer-${index}`;
       const defaultColor = paletteColor(index);
       const statusId = `status-${layerId}`;
+
       const card = document.createElement('div');
       card.className = 'layer-card';
       card.id = `card-${layerId}`;
-      card.innerHTML = `<div class="layer-header"><div class="layer-meta"><input type="text" id="name-${layerId}" value="Layer ${index}" class="layer-name-input"></div><div class="layer-actions"><button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">${ICON_EYE}</button><button class="icon-btn" id="remove-${layerId}" title="Remove">✕</button></div></div><div class="layer-body"><div class="layer-row"><div id="picker-${layerId}"></div><label class="muted">Marker Color</label></div><div class="layer-row"><input type="file" id="file-${layerId}" accept=".csv"></div><div id="${statusId}" class="muted"></div></div>`;
+      card.innerHTML = `
+        <div class="layer-header">
+          <div class="layer-meta">
+            <input type="text" id="name-${layerId}" value="Layer ${index}" class="layer-name-input">
+          </div>
+          <div class="layer-actions">
+            <button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">${ICON_EYE}</button>
+            <button class="icon-btn" id="remove-${layerId}" title="Remove">✕</button>
+          </div>
+        </div>
+        <div class="layer-body">
+          <div class="layer-row">
+            <div id="picker-${layerId}"></div>
+            <label class="muted">Marker Color</label>
+          </div>
+          <div class="layer-row">
+            <input type="file" id="file-${layerId}" accept=".csv">
+          </div>
+          <div id="${statusId}" class="muted"></div>
+        </div>
+      `;
       document.getElementById('uploadLayers').appendChild(card);
 
       const layer = new ol.layer.Vector({
@@ -661,51 +778,90 @@
     function handleCSVUpload(event, layerRecord, statusEl) {
       const file = event.target.files[0];
       if (!file) return;
+
       statusEl.textContent = "Uploading…";
+
       Papa.parse(file, {
         header: true,
         skipEmptyLines: 'greedy',
         dynamicTyping: true,
         worker: true,
         complete: async (results) => {
+          console.log('Parsed CSV:', results);
+          console.log('First row:', results.data[0]);
+          console.log('Column names:', results.meta.fields);
+          
           const features = [];
           const color = layerRecord.pickr.getColor().toHEXA().toString();
+          let skipped = 0;
           let geocoded = 0;
+
           for (const row of results.data) {
+            // Try different possible column names
             let lat = parseFloat(row.Latitude || row.latitude || row.LAT || row.lat);
             let lng = parseFloat(row.Longitude || row.longitude || row.LNG || row.lng || row.LON || row.lon);
+            
+            console.log('Processing row:', { lat, lng, address: row.ADDRESS, row });
+
+            // If no valid coordinates, try geocoding the address
             if ((!isFinite(lat) || !isFinite(lng)) && row.ADDRESS) {
               try {
                 statusEl.textContent = `Geocoding addresses... (${geocoded + 1})`;
-                const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`);
+                const response = await fetch(
+                  `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+                );
                 const data = await response.json();
                 if (data.status === "OK" && data.results[0]) {
                   lat = data.results[0].geometry.location.lat;
                   lng = data.results[0].geometry.location.lng;
                   geocoded++;
+                  console.log('Geocoded:', row.ADDRESS, '→', lat, lng);
+                } else {
+                  console.warn('Geocoding failed for:', row.ADDRESS, data.status);
                 }
               } catch (e) {
                 console.warn("Geocoding error:", row.ADDRESS, e);
               }
             }
+
             if (isFinite(lat) && isFinite(lng)) {
               const feature = new ol.Feature({
                 geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat], lccProjection))
               });
+              
+              // Set properties
               feature.set('officeName', row["OFFICE NAME"] || row["LABEL"] || row.Name || row.name || "");
               feature.set('address', row.ADDRESS || row.Address || row.address || "");
               feature.set('color', color);
+              
               features.push(feature);
+            } else {
+              skipped++;
+              console.warn('Skipping row (no valid coords or address):', row);
             }
           }
+
           layerRecord.layer.getSource().clear();
           layerRecord.layer.getSource().addFeatures(features);
+
           const name = document.getElementById(layerRecord.nameInputId).value || 'Layer';
-          statusEl.textContent = features.length > 0 ? `✅ ${features.length} locations added to ${name}.` : "⚠️ No valid locations found.";
+          if (features.length > 0) {
+            statusEl.textContent = `✅ ${features.length} locations added to ${name}.`;
+            if (geocoded > 0) {
+              statusEl.textContent += ` (${geocoded} geocoded)`;
+            }
+            if (skipped > 0) {
+              statusEl.textContent += ` (${skipped} skipped)`;
+            }
+          } else {
+            statusEl.textContent = "⚠️ No valid locations found. Check your CSV format.";
+          }
+
           updateLegend();
           event.target.value = "";
         },
         error: (err) => {
+          console.error('Parse error:', err);
           statusEl.textContent = "❌ Upload failed: " + err.message;
         }
       });
@@ -738,13 +894,10 @@
       uploadLayers.length = 0;
       layerCount = 0;
       document.getElementById('addLayerBtn').disabled = false;
+
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
-      document.getElementById('showOtherCountries').checked = false;
-      document.getElementById('countrySelectContainer').style.display = 'none';
-      document.getElementById('countryFilter').selectedIndex = -1;
-      visibleCountries = new Set(['United States', 'Canada']);
-      applyCountryFilter();
+
       if (originalGeojson) {
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(originalGeojson, {
@@ -754,29 +907,42 @@
         officeLayer.getSource().clear();
         officeLayer.getSource().addFeatures(features);
       }
+
       if (reachEnabled && officeLayer.getVisible()) {
         rebuildOfficeHalos(originalGeojson);
       } else {
         setHaloData(emptyFC());
       }
+
       updateLegend();
     });
 
     // Export map
     document.getElementById('exportMap').addEventListener('click', () => {
       const panel = document.getElementById('panel');
+      
       const prevPanelVis = panel.style.visibility;
       panel.style.visibility = 'hidden';
+
       const TARGET_AR = 21.278 / 12.889;
+
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
+
       const frame = document.createElement('div');
       Object.assign(frame.style, {
-        position: 'absolute', top: '50%', left: '50%', width: '80%',
-        aspectRatio: String(TARGET_AR), transform: 'translate(-50%, -50%)',
-        outline: '2px dashed #666', outlineOffset: '0', pointerEvents: 'none', boxSizing: 'border-box'
+        position: 'absolute',
+        top: '50%', left: '50%',
+        width: '80%',
+        aspectRatio: String(TARGET_AR),
+        transform: 'translate(-50%, -50%)',
+        outline: '2px dashed #666',
+        outlineOffset: '0',
+        pointerEvents: 'none',
+        boxSizing: 'border-box'
       });
       overlay.appendChild(frame);
+
       const hint = document.createElement('div');
       hint.textContent = 'Pan and zoom the map, then confirm.';
       Object.assign(hint.style, {
@@ -785,15 +951,19 @@
         padding: '6px 12px', borderRadius: '4px', pointerEvents: 'none'
       });
       overlay.appendChild(hint);
+
       const controlsWrap = document.createElement('div');
       Object.assign(controlsWrap.style, {
         position: 'absolute', bottom: '20px', right: '20px',
-        display: 'flex', gap: '12px', alignItems: 'center', pointerEvents: 'auto'
+        display: 'flex', gap: '12px', alignItems: 'center',
+        pointerEvents: 'auto'
       });
+
       const sizeLabel = document.createElement('span');
       sizeLabel.textContent = 'Frame size';
       sizeLabel.style.color = '#fff';
       sizeLabel.style.fontSize = '13px';
+
       const sizeSlider = document.createElement('input');
       sizeSlider.type = 'range';
       sizeSlider.min = '30';
@@ -802,6 +972,7 @@
       sizeSlider.step = '1';
       sizeSlider.style.width = '160px';
       sizeSlider.oninput = () => { frame.style.width = sizeSlider.value + '%'; };
+
       function makeBtn(txt) {
         const b = document.createElement('button');
         b.textContent = txt;
@@ -811,66 +982,97 @@
       }
       const confirmBtn = makeBtn('Confirm Export');
       const cancelBtn = makeBtn('Cancel');
+
       controlsWrap.appendChild(sizeLabel);
       controlsWrap.appendChild(sizeSlider);
       controlsWrap.appendChild(confirmBtn);
       controlsWrap.appendChild(cancelBtn);
       overlay.appendChild(controlsWrap);
       document.body.appendChild(overlay);
+
       let exporting = false;
+
       confirmBtn.onclick = async () => {
         if (exporting) return;
         exporting = true;
         confirmBtn.disabled = true;
         confirmBtn.textContent = 'Exporting…';
+
         try {
+          // Wait a moment for rendering
           await new Promise(r => setTimeout(r, 100));
+
+          // Get the map canvas
           const mapContainer = document.getElementById('map');
           const canvases = mapContainer.querySelectorAll('canvas');
-          if (!canvases.length) throw new Error('No canvas found');
+          
+          if (!canvases.length) {
+            throw new Error('No canvas found');
+          }
+
+          // Create composite canvas from all OpenLayers canvases
           const tempCanvas = document.createElement('canvas');
           const mapRect = mapContainer.getBoundingClientRect();
           const boxRect = frame.getBoundingClientRect();
+
+          // Calculate crop area
           const scaleX = canvases[0].width / mapRect.width;
           const scaleY = canvases[0].height / mapRect.height;
+
           let sx = (boxRect.left - mapRect.left) * scaleX;
           let sy = (boxRect.top - mapRect.top) * scaleY;
           let sw = boxRect.width * scaleX;
           let sh = boxRect.height * scaleY;
+
           sx = Math.max(0, Math.floor(sx));
           sy = Math.max(0, Math.floor(sy));
           const ex = Math.min(canvases[0].width, Math.ceil(sx + sw));
           const ey = Math.min(canvases[0].height, Math.ceil(sy + sh));
           sw = Math.max(1, ex - sx);
           sh = Math.max(1, ey - sy);
+
           tempCanvas.width = sw;
           tempCanvas.height = sh;
           const ctx = tempCanvas.getContext('2d');
+
+          // Draw all canvases onto temp canvas
           canvases.forEach(canvas => {
             if (canvas.width > 0) {
               ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
             }
           });
+
+          // Add legend if visible
           const legendEl = document.getElementById('legend');
           if (legendEl && legendEl.style.display !== 'none') {
             const legendCanvas = await html2canvas(legendEl, {
-              backgroundColor: null, scale: scaleX, useCORS: true, logging: false
+              backgroundColor: null,
+              scale: scaleX,
+              useCORS: true,
+              logging: false
             });
+
             const lr = legendEl.getBoundingClientRect();
             const legendW = Math.round(lr.width * scaleX);
             const legendH = Math.round(lr.height * scaleX);
+
             let lmx = Math.round((sw - legendW) / 2);
             const desiredBottom = Math.round(30 * scaleX);
             let lmy = Math.max(0, sh - desiredBottom - legendH);
+
             lmx = Math.max(0, Math.min(lmx, sw - legendW));
             lmy = Math.max(0, Math.min(lmy, sh - legendH));
+
             ctx.drawImage(legendCanvas, lmx, lmy);
           }
+
+          // Download
           const url = tempCanvas.toDataURL('image/png');
           const a = document.createElement('a');
           a.href = url;
           a.download = 'map export.png';
           a.click();
+
           cleanup();
         } catch (err) {
           console.error(err);
@@ -880,7 +1082,9 @@
           exporting = false;
         }
       };
+
       cancelBtn.onclick = () => cleanup();
+
       function cleanup() {
         document.body.removeChild(overlay);
         panel.style.visibility = prevPanelVis || '';
