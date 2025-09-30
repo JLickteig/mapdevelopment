@@ -500,21 +500,7 @@ let selectedCountries = new Set();
     document.getElementById('reachOff').addEventListener('click', () => setReach(false));
 	
 	// Country filtering
-function buildCountryFilter(gj) {
-  const countrySelect = document.getElementById('countryFilter');
-  const countries = [...new Set(gj.features.map(f => f.properties.NAME || f.properties.name).filter(Boolean))]
-    .filter(name => name !== 'United States of America' && name !== 'Canada')
-    .sort();
 
-  countries.forEach(c => {
-    const o = document.createElement('option');
-    o.value = c;
-    o.textContent = c;
-    countrySelect.appendChild(o);
-  });
-
-  countrySelect.addEventListener('change', applyCountryFilter);
-}
 
 function applyCountryFilter() {
   const countrySelect = document.getElementById('countryFilter');
@@ -524,14 +510,31 @@ function applyCountryFilter() {
 
 function updateBaseLayerStyle() {
   baseLayer.setStyle(function(feature) {
-    const name = feature.get('NAME') || feature.get('name') || '';
-    const isUSorCanada = name === 'United States of America' || name === 'Canada';
-    const isSelected = selectedCountries.has(name);
-    const shouldShow = isUSorCanada || (showOtherCountries && isSelected);
+    const adminLevel = feature.get('admin_level');
     
+    // For country boundaries (admin_level 0), check geographic bounds
+    if (adminLevel === 0) {
+      const extent = feature.getGeometry().getExtent();
+      const center = [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2];
+      const lonLat = ol.proj.toLonLat(center, lccProjection);
+      
+      // US/Canada longitude range (roughly -170 to -50)
+      // US/Canada latitude range (roughly 25 to 85)
+      const isNorthAmerica = lonLat[0] >= -170 && lonLat[0] <= -50 && 
+                             lonLat[1] >= 25 && lonLat[1] <= 85;
+      
+      const shouldShow = isNorthAmerica || showOtherCountries;
+      
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: shouldShow ? "#EDEDED" : "transparent" })
+      });
+    }
+    
+    // For state/province boundaries (admin_level 1), always show them
     return new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-      fill: new ol.style.Fill({ color: shouldShow ? "#EDEDED" : "transparent" })
+      fill: new ol.style.Fill({ color: "#EDEDED" })
     });
   });
 }
@@ -592,7 +595,6 @@ baseLayer.getSource().once('change', function() {
       featureProjection: lccProjection,
       dataProjection: 'EPSG:4326'
     });
-    buildCountryFilter(baseGeoJSON);
   }
 });
 
