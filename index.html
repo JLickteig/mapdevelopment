@@ -5,19 +5,25 @@
   <title>Salas O'Brien Offices Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Mapbox -->
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <!-- OpenLayers -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css" />
+  <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
 
-  <!-- html2canvas for export (legend capture) -->
+  <!-- Proj4 for Lambert Conformal Conic -->
+  <script src="https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js"></script>
+
+  <!-- html2canvas for export -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <!-- Pickr (Color Picker) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
 
-  <!-- Turf (fallback + dissolve) -->
+  <!-- Turf -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <!-- CSV parser -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 
   <style>
     :root {
@@ -32,9 +38,14 @@
 
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
-    #map { position: absolute; inset: 0; }
 
-    /* Panel */
+    #map {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
     #panel {
       position: absolute;
       top: 14px; left: 14px;
@@ -54,7 +65,6 @@
       padding: 12px;
       margin-bottom: 12px;
       background: #fff;
-      overflow: visible;
     }
     .section-title {
       font-weight: 600;
@@ -66,7 +76,6 @@
     }
     .hr { height: 1px; background: var(--line); margin: 12px 0; }
 
-    /* Segmented Toggle */
     .segmented {
       display: inline-flex;
       border: 1.5px solid var(--brand);
@@ -84,7 +93,6 @@
     }
     .segmented button.active { background: var(--brand); color: #fff; }
 
-    /* Buttons */
     .so-btn {
       display: inline-flex;
       align-items: center;
@@ -98,29 +106,26 @@
       border: 2px solid var(--brand);
       border-radius: 999px;
       cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
+      transition: background .15s, color .15s;
     }
     .so-btn:hover { background: var(--brand); color: #fff; }
 
-    /* Accordion */
     .accordion { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
     .accordion-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 10px 12px; cursor: pointer; background: #f8fafc;
       font-weight: 600; font-size: 14px;
     }
-    .chev { width: 12px; height: 12px; background: var(--brand); clip-path: polygon(100% 100%, 100% 0, 0 100%); transition: transform .15s; transform-origin: 50% 50%; }
+    .chev { width: 12px; height: 12px; background: var(--brand); clip-path: polygon(100% 100%, 100% 0, 0 100%); transition: transform .15s; }
     .accordion-header[aria-expanded="true"] .chev { transform: rotate(45deg); }
     .accordion-body { display: none; padding: 10px; }
     .accordion-header[aria-expanded="true"] + .accordion-body { display: block; }
 
-    /* Inputs */
     label { font-size: 13px; font-weight: 600; }
     .subhead { color: var(--muted); font-size: 12px; }
     select { width: 100%; min-height: 160px; font-size: 13px; }
     .muted { color: var(--muted); font-size: 12px; }
 
-    /* File input button */
     input[type="file"] { width: 100%; font-size: 13px; }
     input[type="file"]::file-selector-button {
       font-size: 12px; font-weight: 600; color: #000; background: #fff;
@@ -129,13 +134,11 @@
     }
     input[type="file"]::file-selector-button:hover { background: var(--brand); color: #fff; }
 
-    /* Layer cards */
-    .layer-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; overflow: visible; }
-    .layer-card * { max-width: 100%; }
+    .layer-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; background: #fff; }
     .layer-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .layer-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .badge { font-size: 11px; color: #444; background: #f1f5f9; border:1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; }
-    .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; min-width: 0; }
+    .layer-name-input { border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; width: 180px; }
     .layer-actions { display: flex; align-items: center; gap: 8px; }
 
     .icon-btn {
@@ -149,25 +152,19 @@
       align-items:center;
       justify-content:center;
       cursor:pointer;
-      line-height:0;
     }
     .icon-btn:hover{ background:#f3f4f6; }
-    .icon-btn svg{ width:18px; height:18px; display:block; }
+    .icon-btn svg{ width:18px; height:18px; display:block; fill:currentColor; }
 
     .layer-body { display: grid; gap: 8px; }
     .layer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .pickr { flex: 0 0 auto; }
-    .pickr .pcr-button { width: 24px; height: 24px; border-radius: 6px; }
 
-    /* Legend */
     .map-legend {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
       bottom: 14px;
       background: transparent;
-      border: none;
-      box-shadow: none;
       border-radius: 10px;
       padding: 8px 10px;
       z-index: 4;
@@ -175,81 +172,88 @@
     }
     #legendItems { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 16px; }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 0; display: inline-block; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
 
     .pcr-app { z-index: 10002; }
+
+    #popup {
+      position:absolute;
+      background:white;
+      border:1px solid #ccc;
+      padding:6px 10px;
+      font-size:12px;
+      border-radius:6px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.2);
+      pointer-events:none;
+      display:none;
+      z-index:10;
+    }
   </style>
 </head>
 <body>
-  <!-- Control Panel -->
-  <aside id="panel" aria-label="Controls">
-    <!-- Coverage -->
+  <aside id="panel">
     <div class="panel-section">
       <div class="section-title">Coverage (3-hour drive)</div>
-      <div class="segmented" role="group" aria-label="Reach toggle">
-        <button id="reachOff" class="active" aria-pressed="true">Hide Reach</button>
-        <button id="reachOn" aria-pressed="false">Show Reach</button>
+      <div class="segmented">
+        <button id="reachOff" class="active">Hide Reach</button>
+        <button id="reachOn">Show Reach</button>
       </div>
       <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
     </div>
 
-    <!-- Filters -->
     <div class="panel-section">
       <div class="section-title">Filters</div>
 
-      <div class="accordion" id="acc-state">
-        <div class="accordion-header" role="button" aria-expanded="false">
+      <div class="accordion">
+        <div class="accordion-header" aria-expanded="false">
           <span>State / Province</span>
           <span class="chev"></span>
         </div>
         <div class="accordion-body">
-          <label class="subhead">(Ctrl/Cmd + click to select multiple)</label>
+          <label class="subhead">(Ctrl/Cmd + click for multiple)</label>
           <select id="regionFilter" multiple></select>
           <div style="margin-top:8px; display:flex; gap:8px;">
-            <button class="so-btn" id="clearRegion" type="button">Clear</button>
+            <button class="so-btn" id="clearRegion">Clear</button>
           </div>
         </div>
       </div>
 
-      <div class="accordion" id="acc-bu">
-        <div class="accordion-header" role="button" aria-expanded="false">
+      <div class="accordion">
+        <div class="accordion-header" aria-expanded="false">
           <span>Business Unit</span>
           <span class="chev"></span>
         </div>
         <div class="accordion-body">
           <select id="buFilter" multiple size="6"></select>
           <div style="margin-top:8px; display:flex; gap:8px;">
-            <button class="so-btn" id="clearBU" type="button">Clear</button>
+            <button class="so-btn" id="clearBU">Clear</button>
           </div>
         </div>
       </div>
 
       <div class="hr"></div>
-      <button class="so-btn" id="clearFilters" type="button">Clear All Filters</button>
+      <button class="so-btn" id="clearFilters">Clear All Filters</button>
     </div>
 
-    <!-- Layers -->
-    <div class="panel-section" id="layersSection">
+    <div class="panel-section">
       <div class="section-title">Layers</div>
 
-      <!-- Offices layer with eye toggle in header -->
-      <div class="layer-card" aria-label="Offices layer">
+      <div class="layer-card">
         <div class="layer-header">
           <div class="layer-meta">
             <strong>Salas O'Brien Offices</strong>
-            <span style="font-size:10px; color:#666666">Built-in</span>
+            <span style="font-size:10px; color:#666">Built-in</span>
           </div>
           <div class="layer-actions">
-            <button class="icon-btn" id="toggle-offices" title="Hide markers" aria-pressed="true"></button>
+            <button class="icon-btn" id="toggle-offices" title="Toggle visibility"></button>
           </div>
         </div>
         <div class="muted">This layer is filterable.</div>
       </div>
 
-      <!-- Dynamic upload layers container -->
       <div id="uploadLayers"></div>
 
-      <button class="so-btn" id="addLayerBtn" type="button">+ Add Layer</button>
+      <button class="so-btn" id="addLayerBtn">+ Add Layer</button>
       <div style="height:8px;"></div>
       <a href="#" id="downloadTemplate" class="muted" style="color:#E35920; font-weight: bold;">Download CSV template</a>
       <div class="muted" style="margin-top:6px;">
@@ -258,60 +262,112 @@
       </div>
     </div>
 
-    <!-- Tools -->
     <div class="panel-section">
-      <button class="so-btn" id="exportMap" type="button">Export Map as PNG</button>
-      <button class="so-btn" id="revertMap" type="button" style="margin-top:8px;">Revert to Base Map</button>
+      <button class="so-btn" id="exportMap">Export Map as PNG</button>
+      <button class="so-btn" id="revertMap" style="margin-top:8px;">Revert to Base Map</button>
     </div>
   </aside>
 
-  <!-- Map -->
   <div id="map"></div>
-
-  <!-- Legend (centered over map; hidden until a layer is added) -->
-  <div id="legend" class="map-legend" aria-label="Legend" style="display:none;">
+  <div id="popup"></div>
+  <div id="legend" class="map-legend" style="display:none;">
     <div id="legendItems"></div>
   </div>
 
-  <!-- CSV parser -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
   <script>
-    // Inline SVGs for visibility toggles
-    const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
-    const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="18" height="18" aria-hidden="true"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
+    // ADD YOUR GOOGLE MAPS API KEY HERE (WARNING: This is visible to anyone viewing your page source)
+    const GOOGLE_MAPS_KEY = 'YOUR_API_KEY_HERE';
+    
+    const ICON_EYE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 96C239.2 96 174.5 132.8 127.4 176.6C80.6 220.1 49.3 272 34.4 307.7C31.1 315.6 31.1 324.4 34.4 332.3C49.3 368 80.6 420 127.4 463.4C174.5 507.1 239.2 544 320 544C400.8 544 465.5 507.2 512.6 463.4C559.4 419.9 590.7 368 605.6 332.3C608.9 324.4 608.9 315.6 605.6 307.7C590.7 272 559.4 220 512.6 176.6C465.5 132.9 400.8 96 320 96zM176 320C176 240.5 240.5 176 320 176C399.5 176 464 240.5 464 320C464 399.5 399.5 464 320 464C240.5 464 176 399.5 176 320zM320 256C320 291.3 291.3 320 256 320C244.5 320 233.7 317 224.3 311.6C223.3 322.5 224.2 333.7 227.2 344.8C240.9 396 293.6 426.4 344.8 412.7C396 399 426.4 346.3 412.7 295.1C400.5 249.4 357.2 220.3 311.6 224.3C316.9 233.6 320 244.4 320 256z"/></svg>`;
+    const ICON_EYE_OFF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M41-24.9c-9.4-9.4-24.6-9.4-33.9 0S-2.3-.3 7 9.1l528 528c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-96.4-96.4c2.7-2.4 5.4-4.8 8-7.2 46.8-43.5 78.1-95.4 93-131.1 3.3-7.9 3.3-16.7 0-24.6-14.9-35.7-46.2-87.7-93-131.1-47.1-43.7-111.8-80.6-192.6-80.6-56.8 0-105.6 18.2-146 44.2L41-24.9zM204.5 138.7c23.5-16.8 52.4-26.7 83.5-26.7 79.5 0 144 64.5 144 144 0 31.1-9.9 59.9-26.7 83.5l-34.7-34.7c12.7-21.4 17-47.7 10.1-73.7-13.7-51.2-66.4-81.6-117.6-67.9-8.6 2.3-16.7 5.7-24 10l-34.7-34.7zM325.3 395.1c-11.9 3.2-24.4 4.9-37.3 4.9-79.5 0-144-64.5-144-144 0-12.9 1.7-25.4 4.9-37.3L69.4 139.2c-32.6 36.8-55 75.8-66.9 104.5-3.3 7.9-3.3 16.7 0 24.6 14.9 35.7 46.2 87.7 93 131.1 47.1 43.7 111.8 80.6 192.6 80.6 37.3 0 71.2-7.9 101.5-20.6l-64.2-64.2z"/></svg>`;
 
-    // === Tokens ===
-    mapboxgl.accessToken = 'pk.eyJ1IjoiamFjcXVlbGlja3RlaWciLCJhIjoiY21lZDF0aXE0MDVrYzJpcGxxYWJjcjBkaCJ9.FCV2mpRq2iULMEZJbBi0Iw';
-    const GOOGLE_MAPS_KEY = "AIzaSyBdVVKVelSKtsN9F6wTh-S57j-r1TbvNXw";
+    // Projection setup
+    proj4.defs("EPSG:102009", "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs");
+    ol.proj.proj4.register(proj4);
+    const lccProjection = ol.proj.get("EPSG:102009");
 
-    // Isochrone settings
-    const ISOCHRONE_MINUTES = 180;
-    const ISOCHRONE_PROFILE = 'driving';
+    // Layers
+    const baseLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
+        format: new ol.format.GeoJSON()
+      }),
+      style: new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: "#EDEDED" })
+      })
+    });
+
+    const haloLayer = new ol.layer.Vector({
+      source: new ol.source.Vector(),
+      style: new ol.style.Style({
+        fill: new ol.style.Fill({ color: 'rgba(0, 157, 224, 0.2)' })
+      })
+    });
+
+    const officeLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson",
+        format: new ol.format.GeoJSON()
+      }),
+      style: new ol.style.Style({
+        image: new ol.style.Circle({
+          radius: 6,
+          fill: new ol.style.Fill({ color: "#009DE0" }),
+          stroke: new ol.style.Stroke({ color: "#EDEDED", width: 0.5 })
+        })
+      })
+    });
+
+    const map = new ol.Map({
+      target: 'map',
+      layers: [baseLayer, haloLayer, officeLayer],
+      view: new ol.View({
+        projection: lccProjection,
+        center: ol.proj.fromLonLat([-105, 42], lccProjection),
+        zoom: 5.25
+      })
+    });
+
+    // State
+    let originalGeojson = null;
+    let reachEnabled = false;
+    let layerCount = 0;
+    const MAX_LAYERS = 3;
+    const uploadLayers = [];
     const isoCache = new Map();
 
-    // Map init
-    const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/jacquelickteig/cm19xymc400tt01pde8ul6loi',
-      center: [-98.5795, 39.8283],
-      zoom: 3,
-      preserveDrawingBuffer: true
+    // Popup
+    const popupEl = document.getElementById('popup');
+    map.on('pointermove', function (evt) {
+      const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
+      if (feature && feature.getGeometry().getType() === 'Point') {
+        const p = feature.getProperties();
+        const name = p["OFFICE NAME"] || p.officeName || p.LABEL || '';
+        const address = p.ADDRESS || p.address || '';
+        const phone = p["MAIN PHONE"] || '';
+        const bu = p.BU || p.bu || '';
+        const color = p.color || '#009DE0';
+
+        popupEl.innerHTML = `
+          <div style="line-height:1.2;">
+            <div style="font-weight:bold; color:${color};">${name}</div>
+            <div style="font-size:11px; color:#333;">${address}</div>
+            ${phone ? `<div style="font-size:11px; color:#666;">${phone}</div>` : ''}
+            ${bu ? `<div style="font-size:11px; color:#666;">${bu}</div>` : ''}
+          </div>
+        `;
+        popupEl.style.left = evt.pixel[0] + 12 + 'px';
+        popupEl.style.top = evt.pixel[1] + 12 + 'px';
+        popupEl.style.display = 'block';
+        map.getTargetElement().style.cursor = 'pointer';
+      } else {
+        popupEl.style.display = 'none';
+        map.getTargetElement().style.cursor = '';
+      }
     });
-    map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-    // Data state
-    let originalGeojson = null;
-    const OFFICE_SOURCE = 'offices';
-    const OFFICE_LAYER = 'offices-layer';
-    const HALO_OFFICES_SOURCE = 'halo-offices';
-    const HALO_OFFICES_FILL = 'halo-offices-fill';
-
-    // Upload layers state
-    const MAX_LAYERS = 3;
-    let layerCount = 0;
-    const uploadLayers = []; // { id, sourceId, circleLayerId, nameInputId, pickr, visible, filterActive, originalFC, currentFC }
-
-    // Accordion behavior
+    // Accordion
     document.querySelectorAll('.accordion-header').forEach(h => {
       h.addEventListener('click', () => {
         const expanded = h.getAttribute('aria-expanded') === 'true';
@@ -319,113 +375,108 @@
       });
     });
 
-    // Segmented toggle for reach (OFFICES ONLY)
-    const reachOnBtn = document.getElementById('reachOn');
-    const reachOffBtn = document.getElementById('reachOff');
-    let reachEnabled = false;
-    function setReach(enabled) {
-      reachEnabled = enabled;
-      reachOnBtn.classList.toggle('active', enabled);
-      reachOnBtn.setAttribute('aria-pressed', String(enabled));
-      reachOffBtn.classList.toggle('active', !enabled);
-      reachOffBtn.setAttribute('aria-pressed', String(!enabled));
-
-      if (!map.isStyleLoaded()) return;
-
-      if (!enabled) {
-        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
-      } else {
-        rebuildOfficeHalos();
-      }
-    }
-    reachOnBtn.addEventListener('click', () => setReach(true));
-    reachOffBtn.addEventListener('click', () => setReach(false));
-
-    // Helpers
-    const emptyFC = () => ({ type: 'FeatureCollection', features: [] });
-
-    function ensureFillLayer(sourceId, layerId, color, beforeLayerId) {
-      if (!map.getSource(sourceId)) {
-        map.addSource(sourceId, { type: 'geojson', data: emptyFC() });
-      }
-      if (!map.getLayer(layerId)) {
-        map.addLayer({ id: layerId, type: 'fill', source: sourceId, paint: { 'fill-color': color, 'fill-opacity': 0.2 } }, beforeLayerId);
-      }
-    }
-    function setHaloData(sourceId, fc) {
-      const src = map.getSource(sourceId);
-      if (src) src.setData(fc);
+    // Helper functions
+    function emptyFC() {
+      return { type: 'FeatureCollection', features: [] };
     }
 
-    // Isochrone + dissolve
     async function fetchIsochronePolygon(lng, lat) {
       const key = `${lng.toFixed(6)},${lat.toFixed(6)}`;
       if (isoCache.has(key)) return isoCache.get(key);
-      const url = `https://api.mapbox.com/isochrone/v1/mapbox/${ISOCHRONE_PROFILE}/${lng},${lat}?contours_minutes=${ISOCHRONE_MINUTES}&polygons=true&generalize=10&access_token=${mapboxgl.accessToken}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Isochrone fetch failed');
-        const gj = await res.json();
-        if (!gj.features?.length) throw new Error('No isochrone features');
-        const poly = { type: 'Feature', geometry: gj.features[0].geometry, properties: {} };
-        isoCache.set(key, poly);
-        return poly;
-      } catch (err) {
-        const circle = turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
-        isoCache.set(key, circle);
-        return circle;
-      }
+      const circle = turf.circle([lng, lat], 289.7, { steps: 128, units: 'kilometers' });
+      isoCache.set(key, circle);
+      return circle;
     }
+
     async function buildIsochronesForPoints(points) {
       const polys = [];
-      const batchSize = 5;
-      for (let i = 0; i < points.length; i += batchSize) {
-        const batch = points.slice(i, i + batchSize).map(async f => {
-          const [lng, lat] = f.geometry.coordinates;
-          return await fetchIsochronePolygon(lng, lat);
-        });
-        const results = await Promise.all(batch);
-        polys.push(...results);
+      for (const f of points) {
+        const [lng, lat] = f.geometry.coordinates;
+        const poly = await fetchIsochronePolygon(lng, lat);
+        polys.push(poly);
       }
       return { type: 'FeatureCollection', features: polys };
     }
+
     function dissolvePolygons(fc) {
       if (!fc?.features?.length) return emptyFC();
       let merged = fc.features[0];
       for (let i = 1; i < fc.features.length; i++) {
-        try { merged = turf.union(merged, fc.features[i]); }
-        catch (e) { console.warn('union failed, skipping a feature', e); }
+        try {
+          merged = turf.union(merged, fc.features[i]);
+        } catch (e) {
+          console.warn('union failed', e);
+        }
       }
       return merged ? { type: 'FeatureCollection', features: [merged] } : emptyFC();
     }
-    // HTML helpers for popups
-    function escapeHTML(s='') {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-    function nl2br(s='') { return String(s).replace(/\n|\r\n|\r/g, '<br>'); }
 
-    // Offices eye icon updater
+    function setHaloData(fc) {
+      const format = new ol.format.GeoJSON();
+      const features = format.readFeatures(fc, {
+        featureProjection: lccProjection,
+        dataProjection: 'EPSG:4326'
+      });
+      haloLayer.getSource().clear();
+      haloLayer.getSource().addFeatures(features);
+    }
+
+    async function rebuildOfficeHalos(sourceData) {
+      if (!reachEnabled || !officeLayer.getVisible()) {
+        setHaloData(emptyFC());
+        return;
+      }
+
+      let features;
+      if (sourceData) {
+        features = sourceData.features;
+      } else {
+        const format = new ol.format.GeoJSON();
+        const gj = format.writeFeaturesObject(officeLayer.getSource().getFeatures(), {
+          featureProjection: lccProjection,
+          dataProjection: 'EPSG:4326'
+        });
+        features = gj.features;
+      }
+
+      const pts = features.filter(f => f.geometry?.type === 'Point');
+      if (!pts.length) {
+        setHaloData(emptyFC());
+        return;
+      }
+
+      const fc = await buildIsochronesForPoints(pts);
+      const dissolved = dissolvePolygons(fc);
+      setHaloData(dissolved);
+    }
+
+    // Reach toggle
+    function setReach(enabled) {
+      reachEnabled = enabled;
+      document.getElementById('reachOn').classList.toggle('active', enabled);
+      document.getElementById('reachOff').classList.toggle('active', !enabled);
+
+      if (!enabled) {
+        setHaloData(emptyFC());
+      } else {
+        rebuildOfficeHalos();
+      }
+    }
+
+    document.getElementById('reachOn').addEventListener('click', () => setReach(true));
+    document.getElementById('reachOff').addEventListener('click', () => setReach(false));
+
+    // Office visibility toggle
     function updateOfficesToggleIcon(show) {
       const btn = document.getElementById('toggle-offices');
-      if (!btn) return;
       btn.innerHTML = show ? ICON_EYE : ICON_EYE_OFF;
-      btn.setAttribute('aria-pressed', String(show));
       btn.title = show ? 'Hide markers' : 'Show markers';
     }
 
-    // Offices visibility helpers
-    function isOfficesVisible() {
-      return map.getLayer(OFFICE_LAYER)
-        ? map.getLayoutProperty(OFFICE_LAYER, 'visibility') !== 'none'
-        : false;
-    }
     function setOfficesVisibility(show) {
-      if (map.getLayer(OFFICE_LAYER)) {
-        map.setLayoutProperty(OFFICE_LAYER, 'visibility', show ? 'visible' : 'none');
-      }
-      // Hide halos when markers are hidden, rebuild when shown (if reach is enabled)
+      officeLayer.setVisible(show);
       if (!show) {
-        setHaloData(HALO_OFFICES_SOURCE, emptyFC());
+        setHaloData(emptyFC());
       } else if (reachEnabled) {
         rebuildOfficeHalos();
       }
@@ -433,67 +484,66 @@
       updateLegend();
     }
 
-    // === Load offices from Google Sheet GeoJSON feed ===
-    map.on('load', async () => {
-      try {
-        const datasetUrl = 'https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/offices.geojson';
-        const res = await fetch(datasetUrl);
-        originalGeojson = await res.json();
+    document.getElementById('toggle-offices').addEventListener('click', () => {
+      setOfficesVisibility(!officeLayer.getVisible());
+    });
 
-        map.addSource(OFFICE_SOURCE, { type: 'geojson', data: originalGeojson });
-        map.addLayer({
-          id: OFFICE_LAYER,
-          type: 'circle',
-          source: OFFICE_SOURCE,
-          paint: { 'circle-radius': 6, 'circle-color': '#009de0' }
+    // Initialize
+    setOfficesVisibility(true);
+
+    // Load offices data
+    officeLayer.getSource().once('change', function() {
+      if (officeLayer.getSource().getState() === 'ready') {
+        const format = new ol.format.GeoJSON();
+        originalGeojson = format.writeFeaturesObject(officeLayer.getSource().getFeatures(), {
+          featureProjection: lccProjection,
+          dataProjection: 'EPSG:4326'
         });
-
-        ensureFillLayer(HALO_OFFICES_SOURCE, HALO_OFFICES_FILL, '#009de0', OFFICE_LAYER);
-
-        // Offices eye toggle hookup
-        const officesBtn = document.getElementById('toggle-offices');
-        let officesVisible = true;
-        setOfficesVisibility(officesVisible); // initialize and sync icon
-        if (officesBtn) {
-          officesBtn.addEventListener('click', () => {
-            officesVisible = !isOfficesVisible(); // compute from layer to stay in sync
-            setOfficesVisibility(officesVisible);
-          });
-        }
-
         buildFilters(originalGeojson);
-        wireOfficePopups();
-        setReach(false);
         updateLegend();
-      } catch (e) {
-        console.error('Error loading dataset:', e);
       }
     });
 
-    // === Filters ===
+    // Filters
     function buildFilters(gj) {
       const regionSelect = document.getElementById('regionFilter');
       const buSelect = document.getElementById('buFilter');
-
-      regionSelect.innerHTML = '';
-      buSelect.innerHTML = '';
 
       const states = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'US').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const provinces = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'CAN').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.BU).filter(Boolean))].sort();
 
-      const caGroup = document.createElement('optgroup'); caGroup.label = 'Canada';
-      provinces.forEach(p => { const o = document.createElement('option'); o.value = 'CAN|'+p; o.textContent = p; caGroup.appendChild(o); });
+      const caGroup = document.createElement('optgroup');
+      caGroup.label = 'Canada';
+      provinces.forEach(p => {
+        const o = document.createElement('option');
+        o.value = 'CAN|' + p;
+        o.textContent = p;
+        caGroup.appendChild(o);
+      });
 
-      const usGroup = document.createElement('optgroup'); usGroup.label = 'United States';
-      states.forEach(s => { const o = document.createElement('option'); o.value = 'US|'+s; o.textContent = s; usGroup.appendChild(o); });
+      const usGroup = document.createElement('optgroup');
+      usGroup.label = 'United States';
+      states.forEach(s => {
+        const o = document.createElement('option');
+        o.value = 'US|' + s;
+        o.textContent = s;
+        usGroup.appendChild(o);
+      });
 
       regionSelect.appendChild(caGroup);
       regionSelect.appendChild(usGroup);
 
-      bus.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; buSelect.appendChild(o); });
+      bus.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b;
+        o.textContent = b;
+        buSelect.appendChild(o);
+      });
 
-      function getSelected(select) { return Array.from(select.selectedOptions).map(o => o.value); }
+      function getSelected(select) {
+        return Array.from(select.selectedOptions).map(o => o.value);
+      }
 
       async function applyFilters() {
         const regionsRaw = getSelected(regionSelect);
@@ -513,106 +563,51 @@
             return ok;
           })
         };
-        map.getSource(OFFICE_SOURCE).setData(filtered);
-        if (reachEnabled && isOfficesVisible()) await rebuildOfficeHalos(filtered);
 
-        for (const layer of uploadLayers) {
-          if (layer.filterActive) applyFiltersToUploadLayer(layer);
-        }
+        const format = new ol.format.GeoJSON();
+        const features = format.readFeatures(filtered, {
+          featureProjection: lccProjection,
+          dataProjection: 'EPSG:4326'
+        });
+        officeLayer.getSource().clear();
+        officeLayer.getSource().addFeatures(features);
+
+        if (reachEnabled && officeLayer.getVisible()) await rebuildOfficeHalos(filtered);
       }
 
-      document.getElementById('clearRegion').addEventListener('click', () => { regionSelect.selectedIndex = -1; applyFilters(); });
-      document.getElementById('clearBU').addEventListener('click', () => { buSelect.selectedIndex = -1; applyFilters(); });
+      document.getElementById('clearRegion').addEventListener('click', () => {
+        regionSelect.selectedIndex = -1;
+        applyFilters();
+      });
+      document.getElementById('clearBU').addEventListener('click', () => {
+        buSelect.selectedIndex = -1;
+        applyFilters();
+      });
       document.getElementById('clearFilters').addEventListener('click', () => {
-        regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
-        map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-        if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
-        for (const layer of uploadLayers) {
-          if (layer.filterActive && layer.originalFC) {
-            const src = map.getSource(layer.id);
-            if (src) { src.setData(layer.originalFC); layer.currentFC = layer.originalFC; }
-          }
-        }
+        regionSelect.selectedIndex = -1;
+        buSelect.selectedIndex = -1;
+        const format = new ol.format.GeoJSON();
+        const features = format.readFeatures(originalGeojson, {
+          featureProjection: lccProjection,
+          dataProjection: 'EPSG:4326'
+        });
+        officeLayer.getSource().clear();
+        officeLayer.getSource().addFeatures(features);
+        if (reachEnabled && officeLayer.getVisible()) rebuildOfficeHalos(originalGeojson);
       });
 
       regionSelect.addEventListener('change', applyFilters);
       buSelect.addEventListener('change', applyFilters);
-
-      window.__getActiveFilters = () => ({
-        regions: getSelected(regionSelect).map(v => v.split('|')[1]),
-        bus: getSelected(buSelect)
-      });
-    }
-    // === Apply filters to uploaded CSV layers ===
-    function applyFiltersToUploadLayer(layer) {
-      if (!layer || !layer.originalFC) return;
-      const { regions, bus } = (window.__getActiveFilters && window.__getActiveFilters()) || { regions: [], bus: [] };
-      const filtered = {
-        type: 'FeatureCollection',
-        features: (layer.originalFC.features || []).filter(f => {
-          const p = f.properties || {};
-          let ok = true;
-          if (regions.length && p["STATE / PROVINCE"]) {
-            ok = regions.includes(p["STATE / PROVINCE"]);
-          } else if (regions.length) {
-            ok = false;
-          }
-          if (ok && bus.length && p.BU) {
-            ok = bus.includes(p.BU);
-          } else if (ok && bus.length && !p.BU) {
-            ok = true;
-          }
-          return ok;
-        })
-      };
-      const src = map.getSource(layer.id);
-      if (src) { src.setData(filtered); layer.currentFC = filtered; }
     }
 
-    // === Office popups ===
-    function wireOfficePopups() {
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-      map.on('mouseenter', OFFICE_LAYER, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const p = e.features[0].properties || {};
-        const officeName = nl2br(p["OFFICE NAME"] || '');
-        const address    = nl2br(p.ADDRESS || '');
-        const phone      = nl2br(p["MAIN PHONE"] || '');
-        const bu         = nl2br(p.BU || '');
-
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<div style="line-height:1.1;">
-            <div style="font-weight:bold; color:#009DE0; margin:0;">${officeName}</div>
-            <div style="font-size:11px; color:#333; margin:0;">${address}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${phone}</div>
-            <div style="font-size:11px; color:#666; margin:0;">${bu}</div>
-          </div>`
-        ).addTo(map);
-      });
-      map.on('mouseleave', OFFICE_LAYER, () => { 
-        map.getCanvas().style.cursor = ''; 
-        popup.remove(); 
-      });
-    }
-
-    // === Rebuild office halos (filtered or full) ===
-    async function rebuildOfficeHalos(sourceData) {
-      if (!reachEnabled || !isOfficesVisible()) return;
-      const data = sourceData || map.getSource(OFFICE_SOURCE)._data;
-      const pts = data.features.filter(f => f.geometry?.type === 'Point');
-      const fc = await buildIsochronesForPoints(pts);
-      const dissolved = dissolvePolygons(fc);
-      setHaloData(HALO_OFFICES_SOURCE, dissolved);
-    }
-
-    // === Legend (hidden until a user layer exists and is visible) ===
+    // Legend
     function updateLegend() {
       const legendEl = document.getElementById('legend');
-      const itemsEl  = document.getElementById('legendItems');
+      const itemsEl = document.getElementById('legendItems');
 
-      const anyUserLayers = uploadLayers.length > 0 && uploadLayers.some(l => l.visible);
+      const anyUserLayers = uploadLayers.some(l => l.visible);
 
-      if (!anyUserLayers && !isOfficesVisible()) {
+      if (!anyUserLayers && !officeLayer.getVisible()) {
         legendEl.style.display = 'none';
         itemsEl.innerHTML = '';
         return;
@@ -621,71 +616,49 @@
       legendEl.style.display = '';
       itemsEl.innerHTML = '';
 
-      if (isOfficesVisible()) {
-        addLegendItem(itemsEl, '#009de0', "Salas O'Brien Offices");
+      if (officeLayer.getVisible()) {
+        addLegendItem(itemsEl, '#009DE0', "Salas O'Brien Offices");
       }
 
       for (const l of uploadLayers) {
         if (!l.visible) continue;
         const color = l.pickr.getColor().toHEXA().toString();
-        const normalized = normalizeHex(color);
-        const name  = document.getElementById(l.nameInputId).value || 'Layer';
-        addLegendItem(itemsEl, normalized, name);
+        const name = document.getElementById(l.nameInputId).value || 'Layer';
+        addLegendItem(itemsEl, color, name);
       }
     }
+
     function addLegendItem(container, color, name) {
-      const row = document.createElement('div'); 
+      const row = document.createElement('div');
       row.className = 'legend-item';
-      const sw = document.createElement('span'); 
-      sw.className = 'legend-swatch'; 
+      const sw = document.createElement('span');
+      sw.className = 'legend-swatch';
       sw.style.background = color;
-      const text = document.createElement('span'); 
+      const text = document.createElement('span');
       text.textContent = name;
-      row.appendChild(sw); 
-      row.appendChild(text); 
+      row.appendChild(sw);
+      row.appendChild(text);
       container.appendChild(row);
     }
-    // === Layers UI ===
-    const uploadLayersContainer = document.getElementById('uploadLayers');
-    const addLayerBtn = document.getElementById('addLayerBtn');
 
-    addLayerBtn.addEventListener('click', () => {
-      if (layerCount >= MAX_LAYERS) { 
-        alert('You can add up to 3 layers.'); 
-        return; 
-      }
-      addUploadLayer();
-      if (layerCount >= MAX_LAYERS) addLayerBtn.disabled = true;
-      updateLegend();
-    });
-
+    // Upload layers
     function paletteColor(seed) {
       const palette = ['#000086', '#16a34a', '#ea580c', '#2563eb', '#0ea5e9', '#f59e0b'];
       return palette[(seed - 1) % palette.length];
     }
-    function normalizeHex(hex) { 
-      if (!hex) return '#000000'; 
-      return hex.length === 9 ? hex.slice(0, 7) : hex; 
-    }
 
-    // Interaction shield for color picker
-    let __shield = null;
-    function showInteractionShield() {
-      if (__shield) return;
-      __shield = document.createElement('div');
-      Object.assign(__shield.style, { position:'fixed', inset:'0', zIndex:'10001', cursor:'default' });
-      document.body.appendChild(__shield);
-    }
-    function hideInteractionShield() { 
-      if (!__shield) return; 
-      __shield.remove(); 
-      __shield = null; 
-    }
+    document.getElementById('addLayerBtn').addEventListener('click', () => {
+      if (layerCount >= MAX_LAYERS) {
+        alert('You can add up to 3 layers.');
+        return;
+      }
+      addUploadLayer();
+      updateLegend();
+    });
 
     function addUploadLayer() {
       const index = ++layerCount;
       const layerId = `uploaded-layer-${index}`;
-      const circleLayerId = `uploaded-circle-${index}`;
       const defaultColor = paletteColor(index);
       const statusId = `status-${layerId}`;
 
@@ -695,11 +668,11 @@
       card.innerHTML = `
         <div class="layer-header">
           <div class="layer-meta">
-            <input type="text" id="name-${layerId}" value="Layer ${index}" aria-label="Layer name" class="layer-name-input">
+            <input type="text" id="name-${layerId}" value="Layer ${index}" class="layer-name-input">
           </div>
           <div class="layer-actions">
             <button class="icon-btn" id="toggle-${layerId}" title="Toggle visibility">${ICON_EYE}</button>
-            <button class="icon-btn" id="remove-${layerId}" title="Remove layer">✕</button>
+            <button class="icon-btn" id="remove-${layerId}" title="Remove">✕</button>
           </div>
         </div>
         <div class="layer-body">
@@ -708,123 +681,91 @@
             <label class="muted">Marker Color</label>
           </div>
           <div class="layer-row">
-            <label style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="link-${layerId}"> Use filters
-            </label>
-          </div>
-          <div class="layer-row">
             <input type="file" id="file-${layerId}" accept=".csv">
           </div>
           <div id="${statusId}" class="muted"></div>
         </div>
       `;
-      uploadLayersContainer.appendChild(card);
+      document.getElementById('uploadLayers').appendChild(card);
 
-      map.addSource(layerId, { type:'geojson', data: emptyFC() });
-      map.addLayer({ 
-        id: circleLayerId, 
-        type: 'circle', 
-        source: layerId, 
-        paint: { 'circle-radius': 6, 'circle-color': defaultColor } 
+      const layer = new ol.layer.Vector({
+        source: new ol.source.Vector(),
+        style: new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 6,
+            fill: new ol.style.Fill({ color: defaultColor }),
+            stroke: new ol.style.Stroke({ color: "#EDEDED", width: 0.5 })
+          })
+        })
       });
+      map.addLayer(layer);
 
       const pickr = Pickr.create({
         el: `#picker-${layerId}`,
         theme: 'classic',
         default: defaultColor,
         container: document.body,
-        components: { 
-          preview: true, 
-          opacity: false, 
-          hue: true, 
-          interaction: { hex: true, input: true, save: true, cancel: true } 
+        components: {
+          preview: true,
+          opacity: false,
+          hue: true,
+          interaction: { hex: true, input: true, save: true, cancel: true }
         }
       });
 
       let visible = true;
       const layerRecord = {
         id: layerId,
-        sourceId: layerId,
-        circleLayerId,
+        layer: layer,
         nameInputId: `name-${layerId}`,
         pickr,
-        get visible() { return visible; },
-        filterActive: false,
-        originalFC: emptyFC(),
-        currentFC: emptyFC()
+        get visible() { return visible; }
       };
       uploadLayers.push(layerRecord);
 
-      // Color application
-      function applyColorToLayer(hex) {
-        const normalized = normalizeHex(hex);
-        if (map.getLayer(circleLayerId)) map.setPaintProperty(circleLayerId, 'circle-color', normalized);
-        const src = map.getSource(layerId);
-        if (src && layerRecord.currentFC && layerRecord.currentFC.features) {
-          layerRecord.currentFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
-          src.setData(layerRecord.currentFC);
-        }
-        if (layerRecord.originalFC && layerRecord.originalFC.features) {
-          layerRecord.originalFC.features.forEach(f => { (f.properties || (f.properties = {})).color = normalized; });
-          if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
-        }
+      pickr.on('change', (c) => {
+        const color = c.toHEXA().toString();
+        layer.setStyle(new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 6,
+            fill: new ol.style.Fill({ color: color }),
+            stroke: new ol.style.Stroke({ color: "#EDEDED", width: 0.5 })
+          })
+        }));
         updateLegend();
-      }
-
-      pickr.on('init', () => {
-        const hex = normalizeHex(pickr.getColor().toHEXA().toString() || defaultColor);
-        applyColorToLayer(hex);
       });
-      pickr.on('change', (c) => { applyColorToLayer(c.toHEXA().toString()); });
-      pickr.on('swatchselect', (c) => { applyColorToLayer(c.toHEXA().toString()); });
-      pickr.on('save', () => { pickr.hide(); });
+      pickr.on('save', () => pickr.hide());
 
-      // Icon toggles
-      const toggleBtn = document.getElementById(`toggle-${layerId}`);
-      toggleBtn.addEventListener('click', () => {
+      document.getElementById(`toggle-${layerId}`).addEventListener('click', () => {
         visible = !visible;
-        map.setLayoutProperty(circleLayerId, 'visibility', visible ? 'visible' : 'none');
-        toggleBtn.innerHTML = visible ? ICON_EYE : ICON_EYE_OFF;
-        toggleBtn.setAttribute('aria-pressed', String(visible));
-        toggleBtn.title = visible ? 'Hide markers' : 'Show markers';
+        layer.setVisible(visible);
+        document.getElementById(`toggle-${layerId}`).innerHTML = visible ? ICON_EYE : ICON_EYE_OFF;
         updateLegend();
       });
 
       document.getElementById(`remove-${layerId}`).addEventListener('click', () => {
         card.remove();
-        if (map.getLayer(circleLayerId)) map.removeLayer(circleLayerId);
-        if (map.getSource(layerId)) map.removeSource(layerId);
+        map.removeLayer(layer);
         const idx = uploadLayers.findIndex(l => l.id === layerId);
         if (idx >= 0) uploadLayers.splice(idx, 1);
-        layerCount--; addLayerBtn.disabled = false; updateLegend();
+        layerCount--;
+        document.getElementById('addLayerBtn').disabled = layerCount >= MAX_LAYERS;
+        updateLegend();
       });
 
       document.getElementById(`name-${layerId}`).addEventListener('input', updateLegend);
 
-      const linkChk = document.getElementById(`link-${layerId}`);
-      linkChk.addEventListener('change', () => {
-        layerRecord.filterActive = linkChk.checked;
-        if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
-        else {
-          const src = map.getSource(layerId);
-          if (src && layerRecord.originalFC) {
-            src.setData(layerRecord.originalFC);
-            layerRecord.currentFC = layerRecord.originalFC;
-          }
-        }
+      document.getElementById(`file-${layerId}`).addEventListener('change', (e) => {
+        handleCSVUpload(e, layerRecord, document.getElementById(statusId));
       });
 
-      const fileInput = document.getElementById(`file-${layerId}`);
-      const perLayerStatus = document.getElementById(statusId);
-      fileInput.addEventListener('change', (e) => handleCSVUpload(e, layerRecord, perLayerStatus));
-
-      updateLegend();
+      if (layerCount >= MAX_LAYERS) {
+        document.getElementById('addLayerBtn').disabled = true;
+      }
     }
 
-    // === Handle CSV Uploads ===
     function handleCSVUpload(event, layerRecord, statusEl) {
-      const input = event.target;
-      const file = input.files && input.files[0];
+      const file = event.target.files[0];
       if (!file) return;
 
       statusEl.textContent = "Uploading…";
@@ -832,305 +773,90 @@
       Papa.parse(file, {
         header: true,
         skipEmptyLines: 'greedy',
+        dynamicTyping: true,
         worker: true,
         complete: async (results) => {
-          try {
-            const features = [];
-            const color = normalizeHex(layerRecord.pickr.getColor().toHEXA().toString());
+          console.log('Parsed CSV:', results);
+          console.log('First row:', results.data[0]);
+          console.log('Column names:', results.meta.fields);
+          
+          const features = [];
+          const color = layerRecord.pickr.getColor().toHEXA().toString();
+          let skipped = 0;
+          let geocoded = 0;
 
-            for (const row of results.data) {
-              let lat = parseFloat(row.Latitude);
-              let lng = parseFloat(row.Longitude);
+          for (const row of results.data) {
+            // Try different possible column names
+            let lat = parseFloat(row.Latitude || row.latitude || row.LAT || row.lat);
+            let lng = parseFloat(row.Longitude || row.longitude || row.LNG || row.lng || row.LON || row.lon);
+            
+            console.log('Processing row:', { lat, lng, address: row.ADDRESS, row });
 
-              if ((!isFinite(lat) || !isFinite(lng)) && row.ADDRESS) {
-                try {
-                  const response = await fetch(
-                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
-                  );
-                  const data = await response.json();
-                  if (data.status === "OK") {
-                    lat = data.results[0].geometry.location.lat;
-                    lng = data.results[0].geometry.location.lng;
-                  }
-                } catch (e) {
-                  console.warn("Geocoding failed:", row.ADDRESS, e);
+            // If no valid coordinates, try geocoding the address
+            if ((!isFinite(lat) || !isFinite(lng)) && row.ADDRESS) {
+              try {
+                statusEl.textContent = `Geocoding addresses... (${geocoded + 1})`;
+                const response = await fetch(
+                  `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(row.ADDRESS)}&key=${GOOGLE_MAPS_KEY}`
+                );
+                const data = await response.json();
+                if (data.status === "OK" && data.results[0]) {
+                  lat = data.results[0].geometry.location.lat;
+                  lng = data.results[0].geometry.location.lng;
+                  geocoded++;
+                  console.log('Geocoded:', row.ADDRESS, '→', lat, lng);
+                } else {
+                  console.warn('Geocoding failed for:', row.ADDRESS, data.status);
                 }
-              }
-
-              if (isFinite(lat) && isFinite(lng)) {
-                features.push({
-                  type: "Feature",
-                  geometry: { type: "Point", coordinates: [lng, lat] },
-                  properties: {
-                    officeName: row["OFFICE NAME"] || row["LABEL"] || "",
-                    address: row.ADDRESS || "",
-                    state: row["STATE / PROVINCE"] || "",
-                    bu: row["BU"] || row["Business Unit"] || "",
-                    color
-                  }
-                });
+              } catch (e) {
+                console.warn("Geocoding error:", row.ADDRESS, e);
               }
             }
 
-            const name = (document.getElementById(layerRecord.nameInputId)?.value || 'Layer').trim();
-            statusEl.textContent = features.length > 0
-              ? `✅ ${features.length} locations added to ${name}.`
-              : "⚠️ No valid locations found in the file.";
-
-            const uploadedGeojson = { type:"FeatureCollection", features };
-            const src = map.getSource(layerRecord.id);
-            if (src) {
-              src.setData(uploadedGeojson);
-              layerRecord.originalFC = uploadedGeojson;
-              layerRecord.currentFC = uploadedGeojson;
+            if (isFinite(lat) && isFinite(lng)) {
+              const feature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat([lng, lat], lccProjection))
+              });
+              
+              // Set properties
+              feature.set('officeName', row["OFFICE NAME"] || row["LABEL"] || row.Name || row.name || "");
+              feature.set('address', row.ADDRESS || row.Address || row.address || "");
+              feature.set('color', color);
+              
+              features.push(feature);
+            } else {
+              skipped++;
+              console.warn('Skipping row (no valid coords or address):', row);
             }
-
-            wireUploadLayerPopups(layerRecord.id);
-            if (layerRecord.filterActive) applyFiltersToUploadLayer(layerRecord);
-
-            updateLegend();
-          } catch (err) {
-            console.error(err);
-            statusEl.textContent = "❌ Upload failed.";
-          } finally {
-            input.value = "";
           }
+
+          layerRecord.layer.getSource().clear();
+          layerRecord.layer.getSource().addFeatures(features);
+
+          const name = document.getElementById(layerRecord.nameInputId).value || 'Layer';
+          if (features.length > 0) {
+            statusEl.textContent = `✅ ${features.length} locations added to ${name}.`;
+            if (geocoded > 0) {
+              statusEl.textContent += ` (${geocoded} geocoded)`;
+            }
+            if (skipped > 0) {
+              statusEl.textContent += ` (${skipped} skipped)`;
+            }
+          } else {
+            statusEl.textContent = "⚠️ No valid locations found. Check your CSV format.";
+          }
+
+          updateLegend();
+          event.target.value = "";
         },
         error: (err) => {
-          console.error(err);
+          console.error('Parse error:', err);
           statusEl.textContent = "❌ Upload failed: " + err.message;
         }
       });
     }
 
-    // === Popups for uploaded layers ===
-    function wireUploadLayerPopups(layerId) {
-      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-      const circleId = `uploaded-circle-${layerId.split('-').pop()}`;
-      map.on('mouseenter', circleId, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const p = e.features[0].properties || {};
-        const label   = nl2br(p.officeName || '(No Label)');
-        const address = nl2br(p.address || '');
-        popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-          `<span style="font-weight:bold; color:${p.color || '#009DE0'};">${label}</span><br>${address}`
-        ).addTo(map);
-      });
-      map.on('mouseleave', circleId, () => { 
-        map.getCanvas().style.cursor = ''; 
-        popup.remove(); 
-      });
-    }
-    // === Export (crop frame and legend capture) ===
-    document.getElementById('exportMap').addEventListener('click', () => {
-      const panel = document.getElementById('panel');
-      const controls = document.querySelectorAll('.mapboxgl-ctrl');
-
-      const prevPanelVis = panel.style.visibility;
-      panel.style.visibility = 'hidden';
-      const prevCtrlVis = [];
-      controls.forEach((c, i) => { 
-        prevCtrlVis[i] = c.style.visibility; 
-        c.style.visibility = 'hidden'; 
-      });
-
-      const TARGET_AR = 21.278 / 12.889;
-
-      const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; pointer-events:none;';
-
-      const frame = document.createElement('div');
-      Object.assign(frame.style, {
-        position: 'absolute',
-        top: '50%', left: '50%',
-        width: '80%',
-        aspectRatio: String(TARGET_AR),
-        transform: 'translate(-50%, -50%)',
-        outline: '2px dashed #666',
-        outlineOffset: '0',
-        pointerEvents: 'none',
-        boxSizing: 'border-box'
-      });
-      overlay.appendChild(frame);
-
-      const hint = document.createElement('div');
-      hint.textContent = 'Pan and zoom the map, then confirm.';
-      Object.assign(hint.style, {
-        position: 'absolute', top: '15px', left: '50%', transform: 'translateX(-50%)',
-        fontSize: '14px', color: '#fff', background: 'rgba(0,0,0,0.6)',
-        padding: '6px 12px', borderRadius: '4px', pointerEvents: 'none'
-      });
-      overlay.appendChild(hint);
-
-      const controlsWrap = document.createElement('div');
-      Object.assign(controlsWrap.style, {
-        position: 'absolute', bottom: '20px', right: '20px',
-        display: 'flex', gap: '12px', alignItems: 'center',
-        pointerEvents: 'auto'
-      });
-
-      const sizeLabel = document.createElement('span');
-      sizeLabel.textContent = 'Frame size';
-      sizeLabel.style.color = '#fff';
-      sizeLabel.style.fontSize = '13px';
-
-      const sizeSlider = document.createElement('input');
-      sizeSlider.type = 'range';
-      sizeSlider.min = '30';
-      sizeSlider.max = '95';
-      sizeSlider.value = '80';
-      sizeSlider.step = '1';
-      sizeSlider.style.width = '160px';
-      sizeSlider.oninput = () => { frame.style.width = sizeSlider.value + '%'; };
-
-      function makeBtn(txt){ 
-        const b=document.createElement('button'); 
-        b.textContent=txt; 
-        b.className='so-btn'; 
-        b.style.width='auto'; 
-        return b; 
-      }
-      const confirmBtn = makeBtn('Confirm Export');
-      const cancelBtn  = makeBtn('Cancel');
-
-      controlsWrap.appendChild(sizeLabel);
-      controlsWrap.appendChild(sizeSlider);
-      controlsWrap.appendChild(confirmBtn);
-      controlsWrap.appendChild(cancelBtn);
-      overlay.appendChild(controlsWrap);
-      document.body.appendChild(overlay);
-
-      let exporting = false;
-
-      async function waitForMapQuiet(timeoutMs = 1200) {
-        if (map.isMoving()) {
-          await Promise.race([
-            new Promise(res => map.once('moveend', res)),
-            new Promise(res => setTimeout(res, timeoutMs))
-          ]);
-        }
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        await Promise.race([
-          new Promise(res => map.once('idle', res)),
-          new Promise(res => setTimeout(res, 300))
-        ]);
-      }
-
-      confirmBtn.onclick = async () => {
-        if (exporting) return;
-        exporting = true;
-        confirmBtn.disabled = true;
-        confirmBtn.textContent = 'Exporting…';
-
-        try {
-          await waitForMapQuiet();
-
-          const mapCanvas = map.getCanvas();
-          const mapRect   = mapCanvas.getBoundingClientRect();
-          const boxRect   = frame.getBoundingClientRect();
-
-          const cx = mapCanvas.width  / mapRect.width;
-          const cy = mapCanvas.height / mapRect.height;
-
-          let sx = (boxRect.left - mapRect.left) * cx;
-          let sy = (boxRect.top  - mapRect.top ) * cy;
-          let sw = boxRect.width  * cx;
-          let sh = boxRect.height * cy;
-
-          sx = Math.max(0, Math.floor(sx));
-          sy = Math.max(0, Math.floor(sy));
-          const ex = Math.min(mapCanvas.width,  Math.ceil(sx + sw));
-          const ey = Math.min(mapCanvas.height, Math.ceil(sy + sh));
-          sw = Math.max(1, ex - sx);
-          sh = Math.max(1, ey - sy);
-
-          const exportCanvas = document.createElement('canvas');
-          exportCanvas.width = sw;
-          exportCanvas.height = sh;
-          const ctx = exportCanvas.getContext('2d', { alpha: false });
-          ctx.imageSmoothingEnabled = false;
-
-          ctx.drawImage(mapCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-
-          // Legend capture
-          const legendEl = document.getElementById('legend');
-          if (legendEl && legendEl.style.display !== 'none') {
-            const scaleLegend = mapCanvas.width / mapRect.width;
-            const lr = legendEl.getBoundingClientRect();
-
-            const legendCanvas = await html2canvas(legendEl, {
-              backgroundColor: null,
-              scale: scaleLegend,
-              useCORS: true,
-              removeContainer: true,
-              logging: false
-            });
-
-            const legendW = Math.round(lr.width * scaleLegend);
-            const legendH = Math.round(lr.height * scaleLegend);
-
-            let lmx = Math.round((sw - legendW) / 2);
-            const desiredBottom = Math.round(30 * scaleLegend);
-            let lmy = Math.max(0, sh - desiredBottom - legendH);
-
-            lmx = Math.max(0, Math.min(lmx, sw - legendW));
-            lmy = Math.max(0, Math.min(lmy, sh - legendH));
-
-            const prevSmooth = ctx.imageSmoothingEnabled;
-            ctx.imageSmoothingEnabled = true;
-            ctx.drawImage(legendCanvas, lmx, lmy);
-            ctx.imageSmoothingEnabled = prevSmooth;
-          }
-
-          const url = exportCanvas.toDataURL('image/png');
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'map export.png';
-          a.click();
-
-          cleanup();
-        } catch (err) {
-          console.error(err);
-          alert('Export failed. Please try again.');
-          confirmBtn.disabled = false;
-          confirmBtn.textContent = 'Confirm Export';
-          exporting = false;
-        }
-      };
-
-      cancelBtn.onclick = () => cleanup();
-
-      function cleanup() {
-        document.body.removeChild(overlay);
-        panel.style.visibility = prevPanelVis || '';
-        controls.forEach((c, i) => c.style.visibility = prevCtrlVis[i] || '');
-        exporting = false;
-      }
-    });
-
-    // === Revert to Base Map ===
-    document.getElementById('revertMap').addEventListener('click', () => {
-      for (const l of [...uploadLayers]) {
-        if (map.getLayer(l.circleLayerId)) map.removeLayer(l.circleLayerId);
-        if (map.getSource(l.id)) map.removeSource(l.id);
-        const card = document.getElementById(`card-${l.id}`); 
-        if (card) card.remove();
-      }
-      uploadLayers.length = 0; layerCount = 0;
-
-      const regionSelect = document.getElementById('regionFilter');
-      const buSelect = document.getElementById('buFilter');
-      regionSelect.selectedIndex = -1; buSelect.selectedIndex = -1;
-
-      if (originalGeojson) map.getSource(OFFICE_SOURCE).setData(originalGeojson);
-
-      if (reachEnabled && isOfficesVisible()) rebuildOfficeHalos(originalGeojson);
-      else setHaloData(HALO_OFFICES_SOURCE, emptyFC());
-
-      updateLegend();
-    });
-
-    // === Template CSV download ===
+    // Template download
     document.getElementById('downloadTemplate').addEventListener('click', async (e) => {
       e.preventDefault();
       const url = "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/refs/heads/main/MapAddressTemplate.csv";
@@ -1140,19 +866,99 @@
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = "MapAddressTemplate.csv";
-        document.body.appendChild(a); 
-        a.click(); 
+        document.body.appendChild(a);
+        a.click();
         document.body.removeChild(a);
-      } catch (err) { 
-        console.error("Failed to download template:", err); 
+      } catch (err) {
+        console.error("Download failed:", err);
       }
     });
 
-    // === Legend auto-refresh when upload area changes ===
-    const legendObserver = new MutationObserver(() => updateLegend());
-    legendObserver.observe(document.getElementById('uploadLayers'), { childList: true, subtree: true });
+    // Revert map
+    document.getElementById('revertMap').addEventListener('click', () => {
+      for (const l of [...uploadLayers]) {
+        map.removeLayer(l.layer);
+        document.getElementById(`card-${l.id}`).remove();
+      }
+      uploadLayers.length = 0;
+      layerCount = 0;
+      document.getElementById('addLayerBtn').disabled = false;
+
+      document.getElementById('regionFilter').selectedIndex = -1;
+      document.getElementById('buFilter').selectedIndex = -1;
+
+      if (originalGeojson) {
+        const format = new ol.format.GeoJSON();
+        const features = format.readFeatures(originalGeojson, {
+          featureProjection: lccProjection,
+          dataProjection: 'EPSG:4326'
+        });
+        officeLayer.getSource().clear();
+        officeLayer.getSource().addFeatures(features);
+      }
+
+      if (reachEnabled && officeLayer.getVisible()) {
+        rebuildOfficeHalos(originalGeojson);
+      } else {
+        setHaloData(emptyFC());
+      }
+
+      updateLegend();
+    });
+
+    // Export map
+    document.getElementById('exportMap').addEventListener('click', () => {
+      map.once('rendercomplete', function() {
+        const mapCanvas = document.createElement('canvas');
+        const size = map.getSize();
+        mapCanvas.width = size[0];
+        mapCanvas.height = size[1];
+        const mapContext = mapCanvas.getContext('2d');
+        
+        Array.prototype.forEach.call(
+          map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer'),
+          function(canvas) {
+            if (canvas.width > 0) {
+              const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
+              mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
+              
+              let matrix;
+              const transform = canvas.style.transform;
+              if (transform) {
+                matrix = transform.match(/^matrix\(([^\(]*)\)$/)[1].split(',').map(Number);
+              } else {
+                matrix = [
+                  parseFloat(canvas.style.width) / canvas.width,
+                  0,
+                  0,
+                  parseFloat(canvas.style.height) / canvas.height,
+                  0,
+                  0
+                ];
+              }
+              CanvasRenderingContext2D.prototype.setTransform.apply(
+                mapContext,
+                matrix
+              );
+              const backgroundColor = canvas.parentNode.style.backgroundColor;
+              if (backgroundColor) {
+                mapContext.fillStyle = backgroundColor;
+                mapContext.fillRect(0, 0, canvas.width, canvas.height);
+              }
+              mapContext.drawImage(canvas, 0, 0);
+            }
+          }
+        );
+        mapContext.globalAlpha = 1;
+        mapContext.setTransform(1, 0, 0, 1, 0, 0);
+        
+        const link = document.createElement('a');
+        link.download = 'map-export.png';
+        link.href = mapCanvas.toDataURL();
+        link.click();
+      });
+      map.renderSync();
+    });
   </script>
 </body>
 </html>
-
-
