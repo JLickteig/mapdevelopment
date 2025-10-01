@@ -306,6 +306,7 @@ const statesProvincesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
     format: new ol.format.GeoJSON()
+	wrapX: false  
   }),
   style: function(feature) {
     const admin = feature.get('admin');
@@ -333,6 +334,7 @@ const countriesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
     format: new ol.format.GeoJSON()
+	wrapX: false  
   }),
   style: function(feature) {
     const name = feature.get('NAME');
