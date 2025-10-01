@@ -305,7 +305,7 @@
 const statesProvincesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
-    format: new ol.format.GeoJSON()
+    format: new ol.format.GeoJSON(),
 	wrapX: false  
   }),
   style: function(feature) {
@@ -333,7 +333,7 @@ const greatLakesLayer = new ol.layer.Vector({
 const countriesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
-    format: new ol.format.GeoJSON()
+    format: new ol.format.GeoJSON(),
 	wrapX: false  
   }),
   style: function(feature) {
