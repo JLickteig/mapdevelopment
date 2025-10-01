@@ -661,6 +661,7 @@ document.getElementById('hideStatesCheckbox').addEventListener('change', functio
   
   updateStatesVisibility();
 });
+
 // Select handling
 document.getElementById('statesSelect').addEventListener('change', function(e) {
   selectedStatesProvinces.clear();
@@ -668,9 +669,30 @@ document.getElementById('statesSelect').addEventListener('change', function(e) {
     selectedStatesProvinces.add(opt.value);
   });
   
-  // Show offices if any states are selected
   if (selectedStatesProvinces.size > 0) {
-    setOfficesVisibility(true);
+    // Show the layers
+    statesProvincesLayer.setVisible(true);
+    countriesLayer.setVisible(true);
+    
+    // Filter offices to only show those in selected states/provinces
+    if (originalGeojson) {
+      const filtered = {
+        type: 'FeatureCollection',
+        features: originalGeojson.features.filter(f => {
+          const stateProvince = f.properties["STATE / PROVINCE"];
+          return selectedStatesProvinces.has(stateProvince);
+        })
+      };
+      
+      const format = new ol.format.GeoJSON();
+      const features = format.readFeatures(filtered, {
+        featureProjection: albersProjection,
+        dataProjection: 'EPSG:4326'
+      });
+      officeLayer.getSource().clear();
+      officeLayer.getSource().addFeatures(features);
+      setOfficesVisibility(true);
+    }
   }
   
   updateStatesVisibility();
