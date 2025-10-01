@@ -203,18 +203,17 @@
 	
 <div class="panel-section">
   <div class="section-title">Other Countries</div>
-  <div class="segmented">
-    <button id="countriesOff" class="active">Hide Countries</button>
-    <button id="countriesOn">Show Countries</button>
-  </div>
-  <div id="countrySelectContainer" style="display:none; margin-top:10px;">
-    <label class="subhead">(Ctrl/Cmd + click for multiple)</label>
-    <select id="countryFilter" multiple size="8"></select>
+  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+    <input type="checkbox" id="showOtherCountries" style="width: auto;">
+    <span>Show other countries</span>
+  </label>
+  <div id="otherCountriesContainer" style="display:none; margin-top:10px;">
+    <label class="subhead">Select countries (Ctrl/Cmd + click for multiple)</label>
+    <select id="countrySelect" multiple size="8" style="margin-top: 6px;"></select>
     <div style="margin-top:8px;">
-      <button class="so-btn" id="clearCountries">Clear Selection</button>
+      <button class="so-btn" id="clearCountrySelection">Clear Selection</button>
     </div>
   </div>
-  <div class="muted" style="margin-top:6px;">Show additional countries beyond US and Canada.</div>
 </div>
 
     <div class="panel-section">
@@ -308,10 +307,15 @@ const statesProvincesLayer = new ol.layer.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
     format: new ol.format.GeoJSON()
   }),
-  style: new ol.style.Style({
-    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-    fill: new ol.style.Fill({ color: "#EDEDED" })
-  })
+  style: function(feature) {
+    const admin = feature.get('admin');
+    const isVisible = admin === 'Canada' || admin === 'United States of America';
+    if (!isVisible) return null; // Hide by default
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+      fill: new ol.style.Fill({ color: "#EDEDED" })
+    });
+  }
 });
 
 const greatLakesLayer = new ol.layer.Vector({
@@ -330,11 +334,17 @@ const countriesLayer = new ol.layer.Vector({
     url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
     format: new ol.format.GeoJSON()
   }),
-  style: new ol.style.Style({
-    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
-    fill: new ol.style.Fill({ color: "transparent" })
-  })
+  style: function(feature) {
+    const name = feature.get('NAME');
+    const isVisible = name === 'Canada' || name === 'United States of America';
+    if (!isVisible) return null; // Hide by default
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
+      fill: new ol.style.Fill({ color: "transparent" })
+    });
+  }
 });
+
     const haloLayer = new ol.layer.Vector({
       source: new ol.source.Vector(),
       style: new ol.style.Style({
@@ -601,6 +611,105 @@ document.getElementById('clearCountries').addEventListener('click', () => {
 
     // Initialize
     setOfficesVisibility(true);
+	
+	// Other Countries functionality
+let allCountries = new Set();
+let allStateProvinces = new Set();
+let selectedOtherCountries = new Set();
+
+// Load country and state/province lists
+countriesLayer.getSource().once('change', function() {
+  if (countriesLayer.getSource().getState() === 'ready') {
+    countriesLayer.getSource().getFeatures().forEach(f => {
+      const name = f.get('NAME');
+      if (name && name !== 'Canada' && name !== 'United States of America') {
+        allCountries.add(name);
+      }
+    });
+    buildCountrySelect();
+  }
+});
+
+statesProvincesLayer.getSource().once('change', function() {
+  if (statesProvincesLayer.getSource().getState() === 'ready') {
+    statesProvincesLayer.getSource().getFeatures().forEach(f => {
+      const admin = f.get('admin');
+      if (admin && admin !== 'Canada' && admin !== 'United States of America') {
+        allStateProvinces.add(admin);
+      }
+    });
+  }
+});
+
+function buildCountrySelect() {
+  const select = document.getElementById('countrySelect');
+  select.innerHTML = '';
+  
+  const sortedCountries = Array.from(allCountries).sort();
+  sortedCountries.forEach(country => {
+    const option = document.createElement('option');
+    option.value = country;
+    option.textContent = country;
+    select.appendChild(option);
+  });
+}
+
+function updateCountryVisibility() {
+  countriesLayer.changed();
+  statesProvincesLayer.changed();
+}
+
+document.getElementById('showOtherCountries').addEventListener('change', function(e) {
+  const container = document.getElementById('otherCountriesContainer');
+  container.style.display = e.target.checked ? 'block' : 'none';
+  
+  if (!e.target.checked) {
+    selectedOtherCountries.clear();
+    document.getElementById('countrySelect').selectedIndex = -1;
+    updateCountryVisibility();
+  }
+});
+
+document.getElementById('countrySelect').addEventListener('change', function(e) {
+  selectedOtherCountries.clear();
+  Array.from(e.target.selectedOptions).forEach(opt => {
+    selectedOtherCountries.add(opt.value);
+  });
+  updateCountryVisibility();
+});
+
+document.getElementById('clearCountrySelection').addEventListener('click', function() {
+  selectedOtherCountries.clear();
+  document.getElementById('countrySelect').selectedIndex = -1;
+  updateCountryVisibility();
+});
+
+// Update the style functions to check selected countries
+countriesLayer.setStyle(function(feature) {
+  const name = feature.get('NAME');
+  const isNorthAmerica = name === 'Canada' || name === 'United States of America';
+  const isSelected = selectedOtherCountries.has(name);
+  const isVisible = isNorthAmerica || isSelected;
+  
+  if (!isVisible) return null;
+  return new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
+    fill: new ol.style.Fill({ color: "transparent" })
+  });
+});
+
+statesProvincesLayer.setStyle(function(feature) {
+  const admin = feature.get('admin');
+  const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
+  const isSelected = selectedOtherCountries.has(admin);
+  const isVisible = isNorthAmerica || isSelected;
+  
+  if (!isVisible) return null;
+  return new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+    fill: new ol.style.Fill({ color: "#EDEDED" })
+  });
+});
 	
 	// Load base layer and build country list
 baseLayer.getSource().once('change', function() {
@@ -1008,10 +1117,12 @@ baseLayer.getSource().once('change', function() {
 
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
-	  
-	  // Reset country filter
-setShowOtherCountries(false);
+	  document.getElementById('showOtherCountries').checked = false;
+document.getElementById('otherCountriesContainer').style.display = 'none';
+selectedOtherCountries.clear();
+updateCountryVisibility();
 
+	  // Reset country filter
       if (originalGeojson) {
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(originalGeojson, {
