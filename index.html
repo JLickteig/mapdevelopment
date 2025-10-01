@@ -688,45 +688,8 @@ document.getElementById('clearStatesSelection').addEventListener('click', functi
   updateStatesVisibility();
 });
 
-countriesLayer.setStyle(function(feature) {
-  const name = feature.get('NAME');
-  const isNorthAmerica = name === 'Canada' || name === 'United States of America';
-  
-  if (!isNorthAmerica) return null;
-  
-  // Hide countries layer when checkbox is checked
-  if (document.getElementById('hideStatesCheckbox').checked) {
-    return null;
-  }
-  
-  return new ol.style.Style({
-    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
-    fill: new ol.style.Fill({ color: "transparent" })
-  });
-});
 
-statesProvincesLayer.setStyle(function(feature) {
-  const stateName = feature.get('name');
-  const isHidden = document.getElementById('hideStatesCheckbox').checked;
-  
-  // If checkbox unchecked, show all
-  if (!isHidden) {
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-      fill: new ol.style.Fill({ color: "#EDEDED" })
-    });
-  }
-  
-  // If checkbox checked, only show selected states
-  if (selectedStatesProvinces.has(stateName)) {
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-      fill: new ol.style.Fill({ color: "#EDEDED" })
-    });
-  }
-  
-  return null; // Hide it
-});
+
 	    // Load offices data
     officeLayer.getSource().once('change', function() {
       if (officeLayer.getSource().getState() === 'ready') {
