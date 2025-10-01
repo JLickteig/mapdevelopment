@@ -314,8 +314,8 @@ const statesProvincesLayer = new ol.layer.Vector({
   }),
   style: function(feature) {
     const admin = feature.get('admin');
-    const isVisible = admin === 'Canada' || admin === 'United States of America';
-    if (!isVisible) return null; // Hide by default
+  const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
+if (!isNorthAmerica) return null;
     return new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
       fill: new ol.style.Fill({ color: "#EDEDED" })
@@ -626,6 +626,8 @@ function buildStatesSelect(filter = '') {
 }
 
 function updateStatesVisibility() {
+  const isHidden = document.getElementById('hideStatesCheckbox').checked;
+  greatLakesLayer.setVisible(!isHidden);
   statesProvincesLayer.changed();
   countriesLayer.changed();
 }
@@ -659,6 +661,12 @@ document.getElementById('statesSelect').addEventListener('change', function(e) {
   Array.from(e.target.selectedOptions).forEach(opt => {
     selectedStatesProvinces.add(opt.value);
   });
+  
+  // Show offices if any states are selected
+  if (selectedStatesProvinces.size > 0) {
+    setOfficesVisibility(true);
+  }
+  
   updateStatesVisibility();
 });
 
