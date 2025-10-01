@@ -303,20 +303,37 @@
     const lccProjection = ol.proj.get("EPSG:102009");
 
     // Layers
-let baseGeoJSON = null;
-const baseLayer = new ol.layer.Vector({
+const statesProvincesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
-    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/mapbase.geojson",
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
     format: new ol.format.GeoJSON()
   }),
-  style: function(feature) {
-    const name = feature.get('NAME') || feature.get('name') || '';
-    const isUSorCanada = name === 'United States of America' || name === 'Canada';
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-      fill: new ol.style.Fill({ color: isUSorCanada ? "#EDEDED" : "transparent" })
-    });
-  }
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+    fill: new ol.style.Fill({ color: "#EDEDED" })
+  })
+});
+
+const greatLakesLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/greatlakes.geojson",
+    format: new ol.format.GeoJSON()
+  }),
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+    fill: new ol.style.Fill({ color: "#FFFFFF" })
+  })
+});
+
+const countriesLayer = new ol.layer.Vector({
+  source: new ol.source.Vector({
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
+    format: new ol.format.GeoJSON()
+  }),
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#666666", width: 1 }),
+    fill: new ol.style.Fill({ color: "transparent" })
+  })
 });
     const haloLayer = new ol.layer.Vector({
       source: new ol.source.Vector(),
@@ -341,7 +358,7 @@ const baseLayer = new ol.layer.Vector({
 
     const map = new ol.Map({
       target: 'map',
-      layers: [baseLayer, haloLayer, officeLayer],
+      layers: [statesProvincesLayer, greatLakesLayer, countriesLayer, haloLayer, officeLayer],
       view: new ol.View({
         projection: lccProjection,
         center: ol.proj.fromLonLat([-105, 42], lccProjection),
@@ -363,9 +380,7 @@ const baseLayer = new ol.layer.Vector({
     // State
     let originalGeojson = null;
     let reachEnabled = false;
-	let showOtherCountries = false;
-let selectedCountries = new Set();
-    let layerCount = 0;
+	let layerCount = 0;
     const MAX_LAYERS = 3;
     const uploadLayers = [];
     const isoCache = new Map();
