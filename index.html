@@ -650,18 +650,7 @@ statesProvincesLayer.setStyle(function(feature) {
   });
 });
 	
-	// Load base layer and build country list
-baseLayer.getSource().once('change', function() {
-  if (baseLayer.getSource().getState() === 'ready') {
-    const format = new ol.format.GeoJSON();
-    baseGeoJSON = format.writeFeaturesObject(baseLayer.getSource().getFeatures(), {
-      featureProjection: lccProjection,
-      dataProjection: 'EPSG:4326'
-    });
-  }
-});
-
-    // Load offices data
+	    // Load offices data
     officeLayer.getSource().once('change', function() {
       if (officeLayer.getSource().getState() === 'ready') {
         const format = new ol.format.GeoJSON();
