@@ -688,17 +688,17 @@ document.getElementById('clearStatesSelection').addEventListener('click', functi
   updateStatesVisibility();
 });
 
-// Update the style functions
 countriesLayer.setStyle(function(feature) {
   const name = feature.get('NAME') || feature.get('name') || feature.get('admin');
   const isNorthAmerica = name === 'Canada' || name === 'United States of America';
+  
+  if (!isNorthAmerica) return null;
   
   // Hide countries layer when checkbox is checked
   if (document.getElementById('hideStatesCheckbox').checked) {
     return null;
   }
   
-  if (!isNorthAmerica) return null;
   return new ol.style.Style({
     stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
     fill: new ol.style.Fill({ color: "transparent" })
