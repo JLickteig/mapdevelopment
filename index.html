@@ -524,69 +524,8 @@ const countriesLayer = new ol.layer.Vector({
     document.getElementById('reachOn').addEventListener('click', () => setReach(true));
     document.getElementById('reachOff').addEventListener('click', () => setReach(false));
 	
-	// Country filtering
-
-
-function applyCountryFilter() {
-  const countrySelect = document.getElementById('countryFilter');
-  selectedCountries = new Set(Array.from(countrySelect.selectedOptions).map(o => o.value));
-  updateBaseLayerStyle();
-}
-
-function updateBaseLayerStyle() {
-  baseLayer.setStyle(function(feature) {
-    const adminLevel = feature.get('admin_level');
     
-    // For country boundaries (admin_level 0), check geographic bounds
-    if (adminLevel === 0) {
-      const extent = feature.getGeometry().getExtent();
-      const center = [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2];
-      const lonLat = ol.proj.toLonLat(center, lccProjection);
-      
-      // US/Canada longitude range (roughly -170 to -50)
-      // US/Canada latitude range (roughly 25 to 85)
-      const isNorthAmerica = lonLat[0] >= -170 && lonLat[0] <= -50 && 
-                             lonLat[1] >= 25 && lonLat[1] <= 85;
-      
-      const shouldShow = isNorthAmerica || showOtherCountries;
-      
-      return new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: shouldShow ? "#EDEDED" : "transparent" })
-      });
-    }
-    
-    // For state/province boundaries (admin_level 1), always show them
-    return new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-      fill: new ol.style.Fill({ color: "#EDEDED" })
-    });
-  });
-}
-
-function setShowOtherCountries(enabled) {
-  showOtherCountries = enabled;
-  document.getElementById('countriesOn').classList.toggle('active', enabled);
-  document.getElementById('countriesOff').classList.toggle('active', !enabled);
-  document.getElementById('countrySelectContainer').style.display = enabled ? 'block' : 'none';
-  
-  if (!enabled) {
-    selectedCountries.clear();
-    document.getElementById('countryFilter').selectedIndex = -1;
-  }
-  
-  updateBaseLayerStyle();
-}
-
-document.getElementById('countriesOn').addEventListener('click', () => setShowOtherCountries(true));
-document.getElementById('countriesOff').addEventListener('click', () => setShowOtherCountries(false));
-
-document.getElementById('clearCountries').addEventListener('click', () => {
-  selectedCountries.clear();
-  document.getElementById('countryFilter').selectedIndex = -1;
-  updateBaseLayerStyle();
-});
-
+   
     // Office visibility toggle
     function updateOfficesToggleIcon(show) {
       const btn = document.getElementById('toggle-offices');
@@ -1122,8 +1061,7 @@ document.getElementById('otherCountriesContainer').style.display = 'none';
 selectedOtherCountries.clear();
 updateCountryVisibility();
 
-	  // Reset country filter
-      if (originalGeojson) {
+	      if (originalGeojson) {
         const format = new ol.format.GeoJSON();
         const features = format.readFeatures(originalGeojson, {
           featureProjection: lccProjection,
