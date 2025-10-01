@@ -637,7 +637,6 @@ document.getElementById('statesSearchBox').addEventListener('input', function(e)
   buildStatesSelect(e.target.value);
 });
 
-// Checkbox toggle
 document.getElementById('hideStatesCheckbox').addEventListener('change', function(e) {
   const container = document.getElementById('statesSelectContainer');
   const isHidden = e.target.checked;
@@ -650,11 +649,18 @@ document.getElementById('hideStatesCheckbox').addEventListener('change', functio
     document.getElementById('statesSelect').selectedIndex = -1;
     document.getElementById('statesSearchBox').value = '';
     buildStatesSelect();
+    statesProvincesLayer.setVisible(true);
+    countriesLayer.setVisible(true);
+    setOfficesVisibility(true);
+  } else {
+    // Checked - hide everything until states are selected
+    statesProvincesLayer.setVisible(false);
+    countriesLayer.setVisible(false);
+    setOfficesVisibility(false);
   }
   
   updateStatesVisibility();
 });
-
 // Select handling
 document.getElementById('statesSelect').addEventListener('change', function(e) {
   selectedStatesProvinces.clear();
