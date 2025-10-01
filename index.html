@@ -203,15 +203,19 @@
 	
 <div class="panel-section">
   <div class="section-title">States & Provinces</div>
-  <div class="segmented">
-    <button id="statesOff">Hide All</button>
-    <button id="statesOn" class="active">Show All</button>
-  </div>
-  <div id="statesSelectContainer" style="margin-top:10px;">
-    <label class="subhead">Show specific states/provinces (Ctrl/Cmd + click for multiple)</label>
-    <select id="statesSelect" multiple size="8" style="margin-top: 6px;"></select>
-    <div style="margin-top:8px;">
-      <button class="so-btn" id="clearStatesSelection">Clear Selection</button>
+  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+    <input type="checkbox" id="hideStatesCheckbox" style="width: auto;">
+    <span>Hide all states & provinces</span>
+  </label>
+  <div id="statesSelectContainer" style="display:none; margin-top:10px;">
+    <label class="subhead">Show specific states/provinces</label>
+    <div style="margin-top: 6px;">
+      <input type="text" id="statesSearchBox" placeholder="Search..." style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; font-size: 13px;">
+    </div>
+    <select id="statesSelect" multiple size="10" style="margin-top: 0;"></select>
+    <div style="margin-top:8px; display: flex; gap: 8px;">
+      <button class="so-btn" style="flex: 1;" id="selectAllStates">Select All</button>
+      <button class="so-btn" style="flex: 1;" id="clearStatesSelection">Clear</button>
     </div>
   </div>
 </div>
@@ -552,11 +556,12 @@ const countriesLayer = new ol.layer.Vector({
 
     // Initialize
     setOfficesVisibility(true);
+	
 	// States & Provinces functionality
 let allUSStates = new Set();
 let allCanadaProvinces = new Set();
 let selectedStatesProvinces = new Set();
-let statesVisible = true;
+let allStatesData = []; // Store for filtering
 
 // Load states and provinces list
 statesProvincesLayer.getSource().once('change', function() {
@@ -567,39 +572,57 @@ statesProvincesLayer.getSource().once('change', function() {
       
       if (admin === 'United States of America' && name) {
         allUSStates.add(name);
+        allStatesData.push({ name, country: 'US' });
       } else if (admin === 'Canada' && name) {
         allCanadaProvinces.add(name);
+        allStatesData.push({ name, country: 'CA' });
       }
     });
     buildStatesSelect();
   }
 });
 
-function buildStatesSelect() {
+function buildStatesSelect(filter = '') {
   const select = document.getElementById('statesSelect');
   select.innerHTML = '';
+  
+  const filterLower = filter.toLowerCase();
   
   // Canada group
   const caGroup = document.createElement('optgroup');
   caGroup.label = 'Canada';
-  Array.from(allCanadaProvinces).sort().forEach(prov => {
+  const caFiltered = Array.from(allCanadaProvinces)
+    .filter(p => p.toLowerCase().includes(filterLower))
+    .sort();
+  
+  caFiltered.forEach(prov => {
     const option = document.createElement('option');
     option.value = prov;
     option.textContent = prov;
+    if (selectedStatesProvinces.has(prov)) {
+      option.selected = true;
+    }
     caGroup.appendChild(option);
   });
-  select.appendChild(caGroup);
+  if (caFiltered.length > 0) select.appendChild(caGroup);
   
   // US group
   const usGroup = document.createElement('optgroup');
   usGroup.label = 'United States';
-  Array.from(allUSStates).sort().forEach(state => {
+  const usFiltered = Array.from(allUSStates)
+    .filter(s => s.toLowerCase().includes(filterLower))
+    .sort();
+  
+  usFiltered.forEach(state => {
     const option = document.createElement('option');
     option.value = state;
     option.textContent = state;
+    if (selectedStatesProvinces.has(state)) {
+      option.selected = true;
+    }
     usGroup.appendChild(option);
   });
-  select.appendChild(usGroup);
+  if (usFiltered.length > 0) select.appendChild(usGroup);
 }
 
 function updateStatesVisibility() {
@@ -607,26 +630,31 @@ function updateStatesVisibility() {
   countriesLayer.changed();
 }
 
-document.getElementById('statesOff').addEventListener('click', function() {
-  statesVisible = false;
-  document.getElementById('statesOff').classList.add('active');
-  document.getElementById('statesOn').classList.remove('active');
-  updateStatesVisibility();
+// Search box functionality
+document.getElementById('statesSearchBox').addEventListener('input', function(e) {
+  buildStatesSelect(e.target.value);
 });
 
-document.getElementById('statesOn').addEventListener('click', function() {
-  statesVisible = true;
-  selectedStatesProvinces.clear();
-  document.getElementById('statesSelect').selectedIndex = -1;
-  document.getElementById('statesOn').classList.add('active');
-  document.getElementById('statesOff').classList.remove('active');
-  updateStatesVisibility();
-});
-
-document.getElementById('statesSelect').addEventListener('change', function(e) {
-  if (!statesVisible) {
-    statesVisible = false; // Keep it hidden if "Hide All" is active
+// Checkbox toggle
+document.getElementById('hideStatesCheckbox').addEventListener('change', function(e) {
+  const container = document.getElementById('statesSelectContainer');
+  const isHidden = e.target.checked;
+  
+  container.style.display = isHidden ? 'block' : 'none';
+  
+  if (!isHidden) {
+    // Unchecked - show all states/provinces again
+    selectedStatesProvinces.clear();
+    document.getElementById('statesSelect').selectedIndex = -1;
+    document.getElementById('statesSearchBox').value = '';
+    buildStatesSelect();
   }
+  
+  updateStatesVisibility();
+});
+
+// Select handling
+document.getElementById('statesSelect').addEventListener('change', function(e) {
   selectedStatesProvinces.clear();
   Array.from(e.target.selectedOptions).forEach(opt => {
     selectedStatesProvinces.add(opt.value);
@@ -634,6 +662,18 @@ document.getElementById('statesSelect').addEventListener('change', function(e) {
   updateStatesVisibility();
 });
 
+// Select All button
+document.getElementById('selectAllStates').addEventListener('click', function() {
+  const select = document.getElementById('statesSelect');
+  selectedStatesProvinces.clear();
+  Array.from(select.options).forEach(opt => {
+    opt.selected = true;
+    selectedStatesProvinces.add(opt.value);
+  });
+  updateStatesVisibility();
+});
+
+// Clear button
 document.getElementById('clearStatesSelection').addEventListener('click', function() {
   selectedStatesProvinces.clear();
   document.getElementById('statesSelect').selectedIndex = -1;
@@ -645,6 +685,11 @@ countriesLayer.setStyle(function(feature) {
   const name = feature.get('NAME') || feature.get('name') || feature.get('admin');
   const isNorthAmerica = name === 'Canada' || name === 'United States of America';
   
+  // Hide countries layer when checkbox is checked
+  if (document.getElementById('hideStatesCheckbox').checked) {
+    return null;
+  }
+  
   if (!isNorthAmerica) return null;
   return new ol.style.Style({
     stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
@@ -654,27 +699,25 @@ countriesLayer.setStyle(function(feature) {
 
 statesProvincesLayer.setStyle(function(feature) {
   const stateName = feature.get('name');
+  const isHidden = document.getElementById('hideStatesCheckbox').checked;
   
-  // If "Show All" is active, show everything
-  if (statesVisible && selectedStatesProvinces.size === 0) {
+  // If checkbox unchecked, show all
+  if (!isHidden) {
     return new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
       fill: new ol.style.Fill({ color: "#EDEDED" })
     });
   }
   
-  // If "Hide All" is active, only show selected states
-  if (!statesVisible || selectedStatesProvinces.size > 0) {
-    if (selectedStatesProvinces.has(stateName)) {
-      return new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: "#EDEDED" })
-      });
-    }
-    return null; // Hide it
+  // If checkbox checked, only show selected states
+  if (selectedStatesProvinces.has(stateName)) {
+    return new ol.style.Style({
+      stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+      fill: new ol.style.Fill({ color: "#EDEDED" })
+    });
   }
   
-  return null;
+  return null; // Hide it
 });
 	    // Load offices data
     officeLayer.getSource().once('change', function() {
@@ -1071,11 +1114,11 @@ statesProvincesLayer.setStyle(function(feature) {
 
       document.getElementById('regionFilter').selectedIndex = -1;
       document.getElementById('buFilter').selectedIndex = -1;
-	  statesVisible = true;
+	  document.getElementById('hideStatesCheckbox').checked = false;
+document.getElementById('statesSelectContainer').style.display = 'none';
 selectedStatesProvinces.clear();
-document.getElementById('statesSelect').selectedIndex = -1;
-document.getElementById('statesOn').classList.add('active');
-document.getElementById('statesOff').classList.remove('active');
+document.getElementById('statesSearchBox').value = '';
+buildStatesSelect();
 updateStatesVisibility();
 
 	      if (originalGeojson) {
