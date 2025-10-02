@@ -257,11 +257,7 @@
   <button class="so-btn" id="clearFilters">Clear All Filters</button>
 </div>
 
-      <div class="hr"></div>
-      <button class="so-btn" id="clearFilters">Clear All Filters</button>
-    </div>
-
-    <div class="panel-section">
+     <div class="panel-section">
       <div class="section-title">Layers</div>
 
       <div class="layer-card">
@@ -591,6 +587,28 @@ statesProvincesLayer.getSource().once('change', function() {
 
 function buildStatesSelect(filter = '') {
   const select = document.getElementById('statesSelect');
+  
+  // Don't rebuild if just filtering - use display property instead
+  if (select.options.length > 0 && filter) {
+    const filterLower = filter.toLowerCase();
+    const optgroups = select.querySelectorAll('optgroup');
+    
+    optgroups.forEach(group => {
+      let hasVisibleOptions = false;
+      const options = group.querySelectorAll('option');
+      
+      options.forEach(opt => {
+        const matches = opt.textContent.toLowerCase().includes(filterLower);
+        opt.style.display = matches ? '' : 'none';
+        if (matches) hasVisibleOptions = true;
+      });
+      
+      group.style.display = hasVisibleOptions ? '' : 'none';
+    });
+    return;
+  }
+  
+  // Only rebuild when initially building or clearing filter
   select.innerHTML = '';
   
   const filterLower = filter.toLowerCase();
@@ -599,7 +617,7 @@ function buildStatesSelect(filter = '') {
   const caGroup = document.createElement('optgroup');
   caGroup.label = 'Canada';
   const caFiltered = Array.from(allCanadaProvinces)
-    .filter(p => p.toLowerCase().includes(filterLower))
+    .filter(p => !filter || p.toLowerCase().includes(filterLower))
     .sort();
   
   caFiltered.forEach(prov => {
@@ -617,7 +635,7 @@ function buildStatesSelect(filter = '') {
   const usGroup = document.createElement('optgroup');
   usGroup.label = 'United States';
   const usFiltered = Array.from(allUSStates)
-    .filter(s => s.toLowerCase().includes(filterLower))
+    .filter(s => !filter || s.toLowerCase().includes(filterLower))
     .sort();
   
   usFiltered.forEach(state => {
@@ -632,39 +650,6 @@ function buildStatesSelect(filter = '') {
   if (usFiltered.length > 0) select.appendChild(usGroup);
 }
 
-function updateStatesVisibility() {
-  const isHidden = document.getElementById('hideStatesCheckbox').checked;
-  greatLakesLayer.setVisible(!isHidden);
-  
-  // Update the style function dynamically
-  statesProvincesLayer.setStyle(function(feature) {
-    const admin = feature.get('admin');
-    const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
-    if (!isNorthAmerica) return null;
-    
-    const stateName = feature.get('name');
-    
-    // If checkbox unchecked, show all North American states
-    if (!isHidden) {
-      return new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: "#EDEDED" })
-      });
-    }
-    
-    // If checkbox checked, only show selected states
-    if (selectedStatesProvinces.has(stateName)) {
-      return new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
-        fill: new ol.style.Fill({ color: "#EDEDED" })
-      });
-    }
-    
-    return null;
-  });
-  
-  countriesLayer.changed();
-}
 // Search box functionality
 document.getElementById('statesSearchBox').addEventListener('input', function(e) {
   buildStatesSelect(e.target.value);
@@ -684,6 +669,16 @@ document.getElementById('hideStatesCheckbox').addEventListener('change', functio
     buildStatesSelect();
     statesProvincesLayer.setVisible(true);
     countriesLayer.setVisible(true);
+	 // Restore all offices
+  if (originalGeojson) {
+    const format = new ol.format.GeoJSON();
+    const features = format.readFeatures(originalGeojson, {
+      featureProjection: albersProjection,
+      dataProjection: 'EPSG:4326'
+    });
+    officeLayer.getSource().clear();
+    officeLayer.getSource().addFeatures(features);
+  }
     setOfficesVisibility(true);
   } else {
     // Checked - hide everything until states are selected
@@ -745,9 +740,20 @@ document.getElementById('selectAllStates').addEventListener('click', function() 
 document.getElementById('clearStatesSelection').addEventListener('click', function() {
   selectedStatesProvinces.clear();
   document.getElementById('statesSelect').selectedIndex = -1;
+  
+  // Restore all offices
+  if (originalGeojson) {
+    const format = new ol.format.GeoJSON();
+    const features = format.readFeatures(originalGeojson, {
+      featureProjection: albersProjection,
+      dataProjection: 'EPSG:4326'
+    });
+    officeLayer.getSource().clear();
+    officeLayer.getSource().addFeatures(features);
+  }
+  
   updateStatesVisibility();
 });
-
 
 
 	    // Load offices data
