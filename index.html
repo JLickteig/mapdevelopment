@@ -698,7 +698,6 @@ document.getElementById('statesSelect').addEventListener('change', function(e) {
   if (selectedStatesProvinces.size > 0) {
     // Show the layers
     statesProvincesLayer.setVisible(true);
-    countriesLayer.setVisible(true);
     
     // Filter offices to only show those in selected states/provinces
     if (originalGeojson) {
