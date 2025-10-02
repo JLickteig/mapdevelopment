@@ -188,6 +188,13 @@
       display:none;
       z-index:10;
     }
+	
+	.ol-zoom {
+  top: auto !important;
+  bottom: 20px !important;
+  left: auto !important;
+  right: 20px !important;
+}
   </style>
 </head>
 <body>
@@ -613,24 +620,7 @@ function buildStatesSelect(filter = '') {
   
   const filterLower = filter.toLowerCase();
   
-  // Canada group
-  const caGroup = document.createElement('optgroup');
-  caGroup.label = 'Canada';
-  const caFiltered = Array.from(allCanadaProvinces)
-    .filter(p => !filter || p.toLowerCase().includes(filterLower))
-    .sort();
-  
-  caFiltered.forEach(prov => {
-    const option = document.createElement('option');
-    option.value = prov;
-    option.textContent = prov;
-    if (selectedStatesProvinces.has(prov)) {
-      option.selected = true;
-    }
-    caGroup.appendChild(option);
-  });
-  if (caFiltered.length > 0) select.appendChild(caGroup);
-  
+    
   // US group
   const usGroup = document.createElement('optgroup');
   usGroup.label = 'United States';
@@ -649,6 +639,24 @@ function buildStatesSelect(filter = '') {
   });
   if (usFiltered.length > 0) select.appendChild(usGroup);
 }
+
+// Canada group
+  const caGroup = document.createElement('optgroup');
+  caGroup.label = 'Canada';
+  const caFiltered = Array.from(allCanadaProvinces)
+    .filter(p => !filter || p.toLowerCase().includes(filterLower))
+    .sort();
+  
+  caFiltered.forEach(prov => {
+    const option = document.createElement('option');
+    option.value = prov;
+    option.textContent = prov;
+    if (selectedStatesProvinces.has(prov)) {
+      option.selected = true;
+    }
+    caGroup.appendChild(option);
+  });
+  if (caFiltered.length > 0) select.appendChild(caGroup);
 
 function updateStatesVisibility() {
   const isHidden = document.getElementById('hideStatesCheckbox').checked;
@@ -774,6 +782,12 @@ document.getElementById('selectAllStates').addEventListener('click', function() 
 document.getElementById('clearStatesSelection').addEventListener('click', function() {
   selectedStatesProvinces.clear();
   document.getElementById('statesSelect').selectedIndex = -1;
+  document.getElementById('statesSearchBox').value = ''; // ADD THIS LINE
+  document.getElementById('hideStatesCheckbox').checked = false; // ADD THIS LINE
+  document.getElementById('statesSelectContainer').style.display = 'none'; // ADD THIS LINE
+  
+  statesProvincesLayer.setVisible(true); // ADD THIS LINE
+  countriesLayer.setVisible(true); // ADD THIS LINE
   
   // Restore all offices
   if (originalGeojson) {
@@ -786,9 +800,9 @@ document.getElementById('clearStatesSelection').addEventListener('click', functi
     officeLayer.getSource().addFeatures(features);
   }
   
+  setOfficesVisibility(true); // ADD THIS LINE
   updateStatesVisibility();
 });
-
 
 	    // Load offices data
     officeLayer.getSource().once('change', function() {
@@ -812,15 +826,6 @@ document.getElementById('clearStatesSelection').addEventListener('click', functi
       const provinces = [...new Set(gj.features.filter(f => f.properties.COUNTRY === 'CAN').map(f => f.properties["STATE / PROVINCE"]).filter(Boolean))].sort();
       const bus = [...new Set(gj.features.map(f => f.properties.BU).filter(Boolean))].sort();
 
-      const caGroup = document.createElement('optgroup');
-      caGroup.label = 'Canada';
-      provinces.forEach(p => {
-        const o = document.createElement('option');
-        o.value = 'CAN|' + p;
-        o.textContent = p;
-        caGroup.appendChild(o);
-      });
-
       const usGroup = document.createElement('optgroup');
       usGroup.label = 'United States';
       states.forEach(s => {
@@ -829,9 +834,20 @@ document.getElementById('clearStatesSelection').addEventListener('click', functi
         o.textContent = s;
         usGroup.appendChild(o);
       });
+	  
+	  const caGroup = document.createElement('optgroup');
+      caGroup.label = 'Canada';
+      provinces.forEach(p => {
+        const o = document.createElement('option');
+        o.value = 'CAN|' + p;
+        o.textContent = p;
+        caGroup.appendChild(o);
+      });
 
-      regionSelect.appendChild(caGroup);
+
+     
       regionSelect.appendChild(usGroup);
+	  regionSelect.appendChild(caGroup);
 
 // Add search functionality for region filter
 document.getElementById('regionSearchBox').addEventListener('input', function(e) {
@@ -895,8 +911,17 @@ document.getElementById('regionSearchBox').addEventListener('input', function(e)
         if (reachEnabled && officeLayer.getVisible()) await rebuildOfficeHalos(filtered);
       }
 
-      document.getElementById('clearRegion').addEventListener('click', () => {
+document.getElementById('clearRegion').addEventListener('click', () => {
         regionSelect.selectedIndex = -1;
+        document.getElementById('regionSearchBox').value = '';
+        // Show all options again
+        const optgroups = regionSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+          group.style.display = '';
+          group.querySelectorAll('option').forEach(opt => {
+            opt.style.display = '';
+          });
+        });
         applyFilters();
       });
       document.getElementById('clearBU').addEventListener('click', () => {
