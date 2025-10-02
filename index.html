@@ -628,10 +628,36 @@ function buildStatesSelect(filter = '') {
 function updateStatesVisibility() {
   const isHidden = document.getElementById('hideStatesCheckbox').checked;
   greatLakesLayer.setVisible(!isHidden);
-  statesProvincesLayer.changed();
+  
+  // Update the style function dynamically
+  statesProvincesLayer.setStyle(function(feature) {
+    const admin = feature.get('admin');
+    const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
+    if (!isNorthAmerica) return null;
+    
+    const stateName = feature.get('name');
+    
+    // If checkbox unchecked, show all North American states
+    if (!isHidden) {
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: "#EDEDED" })
+      });
+    }
+    
+    // If checkbox checked, only show selected states
+    if (selectedStatesProvinces.has(stateName)) {
+      return new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 0.5 }),
+        fill: new ol.style.Fill({ color: "#EDEDED" })
+      });
+    }
+    
+    return null;
+  });
+  
   countriesLayer.changed();
 }
-
 // Search box functionality
 document.getElementById('statesSearchBox').addEventListener('input', function(e) {
   buildStatesSelect(e.target.value);
