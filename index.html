@@ -344,24 +344,19 @@ const greatLakesLayer = new ol.layer.Vector({
 
 const countriesLayer = new ol.layer.Vector({
   source: new ol.source.Vector({
-    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/statesandprovinces.geojson",
+    url: "https://raw.githubusercontent.com/JLickteig/SalasOBrienOfficeMap/main/countries.geojson",
     format: new ol.format.GeoJSON(),
-    wrapX: false  
+	wrapX: false  
   }),
   style: function(feature) {
-    const admin = feature.get('admin');
-    const isNorthAmerica = admin === 'Canada' || admin === 'United States of America';
-    if (!isNorthAmerica) return null;
-    
-    // This draws a 1pt stroke on top of the 0.5pt state borders
-    // The state borders will show through where states touch
-    // This will only be visible at international borders
+    const name = feature.get('NAME');
+    const isVisible = name === 'Canada' || name === 'United States of America';
+    if (!isVisible) return null; // Hide by default
     return new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#CCCCCC", width: 1 }),
       fill: new ol.style.Fill({ color: "transparent" })
     });
-  },
-  zIndex: 10  // Make sure it renders on top
+  }
 });
 
     const haloLayer = new ol.layer.Vector({
