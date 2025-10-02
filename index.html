@@ -199,34 +199,8 @@
 </head>
 <body>
   <aside id="panel">
-    <div class="panel-section">
-      <div class="section-title">Coverage (3-hour drive)</div>
-      <div class="segmented">
-        <button id="reachOff" class="active">Hide Reach</button>
-        <button id="reachOn">Show Reach</button>
-      </div>
-      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
-    </div>
-	
-<div class="panel-section">
-  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-    <input type="checkbox" id="hideStatesCheckbox" style="width: auto;">
-    <span>Only show specific states / provinces</span>
-  </label>
-  <div id="statesSelectContainer" style="display:none; margin-top:10px;">
-    <label class="subhead">Select which to display (Ctrl/Cmd + click for multiple)</label>
-    <div style="margin-top: 6px;">
-      <input type="text" id="statesSearchBox" placeholder="Search..." style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; font-size: 13px;">
-    </div>
-    <select id="statesSelect" multiple size="10" style="margin-top: 0;"></select>
-    <div style="margin-top:8px; display: flex; gap: 8px;">
-      <button class="so-btn" style="flex: 1;" id="selectAllStates">Select All</button>
-      <button class="so-btn" style="flex: 1;" id="clearStatesSelection">Clear</button>
-    </div>
-  </div>
-</div>
-
-<div class="panel-section">
+  
+  <div class="panel-section">
   <div class="section-title">Office Marker Filters</div>
 
   <div class="accordion">
@@ -263,15 +237,40 @@
   <button class="so-btn" id="clearFilters">Clear All Filters</button>
 </div>
 
-     <div class="panel-section">
+    <div class="panel-section">
+      <div class="section-title">Coverage (3-hour drive)</div>
+      <div class="segmented">
+        <button id="reachOff" class="active">Hide Reach</button>
+        <button id="reachOn">Show Reach</button>
+      </div>
+      <div class="muted" style="margin-top:6px;">Shows a 3-hour driving area around offices.</div>
+    </div>
+	
+<div class="panel-section">
+  <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+    <input type="checkbox" id="hideStatesCheckbox" style="width: auto;">
+    <span>Only show specific states / provinces</span>
+  </label>
+  <div id="statesSelectContainer" style="display:none; margin-top:10px;">
+    <label class="subhead">Select which to display (Ctrl/Cmd + click for multiple)</label>
+    <div style="margin-top: 6px;">
+      <input type="text" id="statesSearchBox" placeholder="Search..." style="width: 100%; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 6px; font-size: 13px;">
+    </div>
+    <select id="statesSelect" multiple size="10" style="margin-top: 0;"></select>
+    <div style="margin-top:8px; display: flex; gap: 8px;">
+      <button class="so-btn" style="flex: 1;" id="selectAllStates">Select All</button>
+      <button class="so-btn" style="flex: 1;" id="clearStatesSelection">Clear</button>
+    </div>
+  </div>
+</div>
+   <div class="panel-section">
       <div class="section-title">Layers</div>
 
       <div class="layer-card">
         <div class="layer-header">
           <div class="layer-meta">
             <strong>Salas O'Brien Offices</strong>
-            <span style="font-size:10px; color:#666">Built-in</span>
-          </div>
+             </div>
           <div class="layer-actions">
             <button class="icon-btn" id="toggle-offices" title="Toggle visibility"></button>
           </div>
